@@ -1,0 +1,5 @@
+# onnx==1.16.1
+# onnxruntime==1.18.0
+mlflow==2.12.2
+optimum==1.19.2
+optimum[onnxruntime]

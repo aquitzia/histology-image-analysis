@@ -1,0 +1,5 @@
+/Users/angie/Documents/Bootcamp/5 ML Ops/14_mlops-main
+.github/workflows/deploy.yaml
+mhist-venv
+docker_image_files/lambda_function_local.py
+thumb
