@@ -36,7 +36,7 @@ sample_image_path = 'MHIST_bge.png' # for testing purposes
 # 'name' : MHIST_<code>.png    # image codes are 3 letters long
 # 'label' = HP or SSA          # binary, categorical label
 # 'experts' = 0 through 7      # int
-test_df = pd.read_csv('testset_info.csv')
+test_df = pd.read_csv('testset_features.csv')
 
 def center_image(path, caption):
     left_col, center_col, right_col = st.columns(3)
@@ -66,23 +66,12 @@ if selected is not None and selected == menu_options[0]:    # SSA image
         image_path = random.choice(ssa_df['name'].tolist()) # issue: random.choice doesn't work with a dict-like on this server!
     elif selected_submenu is not None and selected_submenu == menu_options_SSA[1]: # Preview thumbnails
         'Preview all 360 SSA images'
-        image_option = sample_image_path
-        print('image_option:', image_option)
-
         with st.container(height=400):  # Automatically scrollable container
-            for filename in ssa_df['name']:
-                code = filename.strip("MHIST_.png")
-                st.image(os.path.join(THUMB_DIR, image_option), caption=code)
-                image_path = image_option
-
-                # image_paths = [os.path.join(path, f) for f in os.listdir(path)]
-
-                # # Load the Image objects into a list
-                # images = [Image.open(f) for f in image_paths]
-
-                # # Display
-                # st.image(images,
-                # caption=image_paths, width=200)
+            st.image(
+                paths = ssa_df['name'].apply(lambda name: os.path.join(THUMB_DIR, name)).to_list(),
+                caption = ssa_df['code'].to_list(),
+                use_column_width = "auto")
+        image_path = sample_image_path
 
 elif selected is not None and selected == menu_options[1]: # HP image
     "You selected Option 2."
