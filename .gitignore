@@ -2,4 +2,4 @@
 .github/workflows/deploy.yaml
 docker_image_files/lambda_function_local.py
 mhist-venv
-thumb
+# thumb
