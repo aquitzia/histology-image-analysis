@@ -1,10 +1,24 @@
+# Streamlit server info:
+# lsb_release -a
+# Debian GNU/Linux 11 (bullseye)
+# import sys
+# print(sys.version)
+# Python version 3.11.9 (main, May 14 2024, 08:23:55) [GCC 10.2.1 20210110]
+
 import os
 import random
-import streamlit as st
-import requests
 from random import randrange
+import requests
+
+import boto3
+import streamlit as st
 import pandas as pd
 from PIL import Image
+
+# session = boto3.Session(
+#     aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"],
+#     aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"])
+# s3_client = session.client('s3')
 
 # API Gateway URL format- https://{restapi_id}.execute-api.{region}.amazonaws.com/{stage_name}/{resource_path}
 # {restapi_id} for API Gateway REST API
@@ -12,9 +26,10 @@ from PIL import Image
 # {stage_name} deployment stage (e.g., prod, dev, etc.)
 # {resource_path} the endpoint that triggers the Lambda function
 API_URL = 'https://ud4rhytiik.execute-api.us-west-1.amazonaws.com/'
-THUMB_DIR="thumb"
-S3_IMAGE_BUCKET="https://mhist-streamlit-app.s3.us-west-1.amazonaws.com/images/test-set/original/"
-# aws s3 cp s3://mhist-streamlit-app/images/test-set/thumb/ thumb --recursive
+THUMB_DIR="thumb/"
+S3_IMAGE_BUCKET = 'mhist-streamlit-app'
+S3_URL_ORIGINALS = "https://mhist-streamlit-app.s3.us-west-1.amazonaws.com/images/test-set/original/"
+S3_DIR_ORIGINALS="images/test-set/original/"
 sample_image_path = 'MHIST_bge.png' # for testing purposes
 
 # Metadata about the scans
@@ -23,57 +38,79 @@ sample_image_path = 'MHIST_bge.png' # for testing purposes
 # 'experts' = 0 through 7      # int
 test_df = pd.read_csv('testset_info.csv')
 
+def center_image(path, caption):
+    left_col, center_col, right_col = st.columns(3)
+    with center_col:
+        st.image(path, caption=caption, use_column_width="auto") # fit image within the Streamlit app column width
+
+
+
 '### Histopathology Image Analysis'
 'Version 0.0.1'
 st.caption('The MHIST dataset contains images of tissue sections of colorectal polyps under a microscope. The model is trained on a common and clinically-significant (binary classification) task in gastrointestinal pathology.')
 st.caption('There are two possible labels for each image: HP: hyperplastic polyp (benign), and SSA: sessile serrated adenoma (precancerous).')
-st.caption('More information on the dataset.: https://www.google.com/url?q=https%3A%2F%2Farxiv.org%2Fabs%2F2101.12355')
+st.caption('More information on the dataset:\nhttps://www.google.com/url?q=https%3A%2F%2Farxiv.org%2Fabs%2F2101.12355')
 
-'### Test the ML model:'
+'**Test the ML model**'
 'The trained ML model has not been trained on the following \'test set\' of 977 images.'
-menu_options=['Precancerous SSA image', 'Benign HP image', 'Select an image by code:']
-selected = st.selectbox('Select one of the following for analysis (model inference):', menu_options)
+menu_options=['Precancerous SSA image', 'Benign HP image', 'Select an image by code']
+selected = st.selectbox('Select one of the following for analysis (model inference):', menu_options, index=None)
+image_path = None
 # Print different statements based on the selected option
-if selected == menu_options[0]:    # SSA image
+if selected is not None and selected == menu_options[0]:    # SSA image
     "You selected Option 1."
-    ssa_df = test_df[test_df['label']=='SSA', :].drop('label')
+    ssa_df = test_df.loc[test_df['label']=='SSA', :].drop('label', axis=1)
     menu_options_SSA = ['Select a random image', 'Preview all 360 SSA images']
-    selected_submenu = st.selectbox("Select an option", menu_options_SSA)
-    if selected == menu_options[1]: # Preview thumbnails
+    selected_submenu = st.selectbox("Select an option", menu_options_SSA, index=None, label_visibility="collapsed")
+    if selected_submenu is not None and selected_submenu == menu_options_SSA[0]:
+        image_path = random.choice(ssa_df['name'].tolist()) # issue: random.choice doesn't work with a dict-like on this server!
+    elif selected_submenu is not None and selected_submenu == menu_options_SSA[1]: # Preview thumbnails
         'Preview all 360 SSA images'
-        # for image_option in ssa_df['name']:
         image_option = sample_image_path
-        code = image_option.strip("MHIST_.png")
-        st.image(os.path.join(THUMB_DIR, image_option), caption=code, use_column_width="auto") # fit image within the Streamlit app column width
-        image_path = image_option
-    else: # Default behavior is random choice
-        image_path = random.choice(ssa_df['name'])
+        print('image_option:', image_option)
 
-elif selected == menu_options[1]: # HP image
+        with st.container(height=400):  # Automatically scrollable container
+            for filename in ssa_df['name']:
+                code = filename.strip("MHIST_.png")
+                st.image(os.path.join(THUMB_DIR, image_option), caption=code)
+                image_path = image_option
+
+                # image_paths = [os.path.join(path, f) for f in os.listdir(path)]
+
+                # # Load the Image objects into a list
+                # images = [Image.open(f) for f in image_paths]
+
+                # # Display
+                # st.image(images,
+                # caption=image_paths, width=200)
+
+elif selected is not None and selected == menu_options[1]: # HP image
     "You selected Option 2."
+    hp_df = test_df.loc[test_df['label']=='HP', :].drop('label', axis=1)
     menu_options_HP = ['Select a random image', 'Preview all 617  HP images']
-    hp_df = test_df[test_df['label']=='HP', :].drop('label')
-    selected_submenu = st.selectbox("Select an option", menu_options_HP)
-    if selected == menu_options[1]: # Preview thumbnails
-        'Preview all 360 SSA images'
+    selected_submenu = st.selectbox("Select an option", menu_options_HP, index=None, label_visibility="collapsed")
+    if selected_submenu is not None and selected_submenu == menu_options_HP[0]: # Default behavior is random choice
+        image_path = random.choice(hp_df['name'].to_list()) # random.choice doesn't work with dict keys in this version (perhaps Linux?)
+    elif selected_submenu is not None and selected_submenu == menu_options_HP[1]: # Preview thumbnails
+        'Preview all 617  HP images'
         # for image_option in hp_df['name']:
         image_option = sample_image_path
         code = image_option.strip("MHIST_.png")
-        st.image(os.path.join(THUMB_DIR, image_option), caption=code, use_column_width="auto") # fit image within the Streamlit app column width
+        center_image(os.path.join(THUMB_DIR, image_option), caption=code)
         image_path = image_option
-    else: # Default behavior is random choice
-        image_path = random.choice(hp_df['name'])
 
-else:    # default: type in an image code
+
+elif selected is not None:    # default: type in an image code
     "You selected Option 3."
-    code = st.text_input("3-letter image code", height=200)
+    code = st.text_input("3-letter image code")
     image_path = f'MHIST_{code}.png'
 
-print('image_path', image_path)
+if image_path is not None:
+    st.write('selected image', THUMB_DIR+image_path)
 
 if st.button('Analyze'):
         r = None
-        if image_path == "":
+        if image_path is None or image_path == "":
             st.error("Please select an image, then click \"Analyze.\"")
 
         else:
@@ -92,7 +129,10 @@ if st.button('Analyze'):
             message = messages[randrange(0, len(messages))]
             'Get full-sized image from S3'
             code = image_path.strip("MHIST_.png")
-            st.image(S3_IMAGE_BUCKET+image_path, caption=code, use_column_width="auto") # fit within the Streamlit app column width
+            # print('s3 path:', S3_URL_ORIGINALS+image_path)
+            # s3_client.download_file(Bucket=S3_IMAGE_BUCKET, Key=S3_DIR_ORIGINALS+image_path, Filename=image_path)
+            # st.image(S3_URL_ORIGINALS+image_path, caption=code, use_column_width="auto") # fit image within the Streamlit app column width
+            center_image(path=S3_URL_ORIGINALS+image_path, caption=code)
             with st.spinner(message):
                 'Get prediction from Lambda'
                 # r = requests.post(API_URL+'predict', json={'Image':image_path})
