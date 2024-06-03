@@ -58,30 +58,27 @@ selected = st.selectbox('Select one of the following for analysis (model inferen
 image_path = None
 # Print different statements based on the selected option
 if selected is not None and selected == menu_options[0]:    # SSA image
-    "You selected Option 1."
     ssa_df = test_df.loc[test_df['label']=='SSA', :].drop('label', axis=1)
     menu_options_SSA = ['Select a random image', 'Preview all 360 SSA images']
     selected_submenu = st.selectbox("Select an option", menu_options_SSA, index=None, label_visibility="collapsed")
     if selected_submenu is not None and selected_submenu == menu_options_SSA[0]:
         image_path = random.choice(ssa_df['name'].tolist()) # issue: random.choice doesn't work with a dict-like on this server!
     elif selected_submenu is not None and selected_submenu == menu_options_SSA[1]: # Preview thumbnails
-        'Preview all 360 SSA images'
         with st.container(height=400):  # Automatically scrollable container
             st.image(
-                paths = ssa_df['name'].apply(lambda name: os.path.join(THUMB_DIR, name)).to_list(),
-                caption = ssa_df['code'].to_list(),
+                # images = ssa_df['name'].apply(lambda name: os.path.join(THUMB_DIR, name)).to_list(),
+                image =  [os.path.join(THUMB_DIR, p) for p in os.listdir(THUMB_DIR)],
+                # caption = ssa_df['code'].to_list(),
                 use_column_width = "auto")
         image_path = sample_image_path
 
 elif selected is not None and selected == menu_options[1]: # HP image
-    "You selected Option 2."
     hp_df = test_df.loc[test_df['label']=='HP', :].drop('label', axis=1)
     menu_options_HP = ['Select a random image', 'Preview all 617  HP images']
     selected_submenu = st.selectbox("Select an option", menu_options_HP, index=None, label_visibility="collapsed")
     if selected_submenu is not None and selected_submenu == menu_options_HP[0]: # Default behavior is random choice
         image_path = random.choice(hp_df['name'].to_list()) # random.choice doesn't work with dict keys in this version (perhaps Linux?)
     elif selected_submenu is not None and selected_submenu == menu_options_HP[1]: # Preview thumbnails
-        'Preview all 617  HP images'
         # for image_option in hp_df['name']:
         image_option = sample_image_path
         code = image_option.strip("MHIST_.png")
