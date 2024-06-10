@@ -14,6 +14,7 @@ import requests
 import streamlit as st # 1.35.0
 import pandas as pd
 from PIL import Image
+from utilities import predict
 
 # session = boto3.Session(
 #     aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"],
@@ -25,10 +26,10 @@ from PIL import Image
 # {region} AWS region
 # {stage_name} deployment stage (e.g., prod, dev, etc.)
 # {resource_path} the endpoint that triggers the Lambda function
-API_URL = 'https://ud4rhytiik.execute-api.us-west-1.amazonaws.com/'
 THUMB_DIR="thumb"
 S3_IMAGE_BUCKET = 'mhist-streamlit-app'
 S3_URL_ORIGINALS = "https://mhist-streamlit-app.s3.us-west-1.amazonaws.com/images/test-set/original/"
+API_URL = 'https://ud4rhytiik.execute-api.us-west-1.amazonaws.com/'
 S3_DIR_ORIGINALS="images/test-set/original/"
 sample_image_path = 'MHIST_bge.png' # for testing purposes
 
@@ -80,7 +81,7 @@ if 'preview menu' not in st.session_state:
 'Version 0.0.1'
 st.caption('The MHIST dataset contains images of tissue sections of colorectal polyps under a microscope. The model is trained on a common and clinically-significant (binary classification) task in gastrointestinal pathology.')
 st.caption('There are two possible labels for each image: HP: hyperplastic polyp (benign), and SSA: sessile serrated adenoma (precancerous).')
-st.caption('More information on the dataset:\nhttps://www.google.com/url?q=https%3A%2F%2Farxiv.org%2Fabs%2F2101.12355')
+st.caption('More information on the dataset:\nhttps://arxiv.org/abs/2101.12355')
 
 '**Test the ML model**'
 'You can test the model by selecting an image for real-time analysis (model inference). The model has never seen the tissue sections in the following set of images.'
@@ -88,9 +89,9 @@ st.caption('More information on the dataset:\nhttps://www.google.com/url?q=https
 # the first two menu options have the same submenu options
 # the third menu option has no submenu
 menu_options=['Select a random image', 'Preview the images', 'Enter an image code']
-sub_menu_options=['hyperplastic polyp (benign)', 'sessile serrated adenoma (precancerous)', 'any tissue section image']
+sub_menu_options=['hyperplastic polyp (benign)', 'sessile serrated adenoma (precancerous)', 'any tissue section']
 
-selected = st.selectbox('', menu_options, index=None,
+selected = st.selectbox('Select an option', menu_options, index=None,
                         placeholder="Select an option", label_visibility="collapsed", key='menu')
 image_path = None
 
@@ -99,7 +100,7 @@ image_path = None
 # Select a random image
 if selected is not None and selected == menu_options[0]:
     label = None
-    selected_submenu = st.selectbox("", sub_menu_options, index=None,
+    selected_submenu = st.selectbox("Select an image category", sub_menu_options, index=None,
                                     placeholder="Select an image category", label_visibility="collapsed", key = 'random menu')
     if selected_submenu is not None and selected_submenu == sub_menu_options[0]:
         label = 'HP'
@@ -131,8 +132,8 @@ elif selected is not None and selected == menu_options[1]:
 elif selected is not None:    # Default: type in an image code
     image_path = input_img_code()
 
-if image_path is not None and image_path[6:-4] != "": # to get the image code: strip "MHIST_*.png" (slice first 6 chars and last 4)
-    st.write('selected image:', os.path.join(THUMB_DIR, image_path))
+# if image_path is not None and image_path[6:-4] != "": # to get the image code: strip "MHIST_*.png" (slice first 6 chars and last 4)
+#     st.write('selected image:', os.path.join(THUMB_DIR, image_path))
 
 if st.button('Analyze'):
         r = None
@@ -161,7 +162,11 @@ if st.button('Analyze'):
                 'Almost really done.']
             message = messages[randrange(0, len(messages))]
             with st.spinner(message):
-                'Get prediction from Lambda'
+                print('\nimage_path', image_path)
+                pred = predict(S3_URL_ORIGINALS+image_path)
+                f'Prediction from local model: {pred}'
+
+                # 'Get prediction from Lambda'
                 # r = requests.post(API_URL+'predict', json={'Image':image_path})
                 # print(r.headers['Content-Type']) #application/json
                 # print('headers:\n', r.headers) #{'Date': 'Wed, 29 May 2024 03:50:21 GMT', 'Content-Type': 'application/json', 'Content-Length': '48', 'Connection': 'keep-alive', 'Apigw-Requestid': 'Yg7eoiIWSK4EJ8Q='}
