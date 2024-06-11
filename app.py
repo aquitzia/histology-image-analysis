@@ -10,7 +10,7 @@ import random
 from random import randrange
 import requests
 
-# import boto3
+import boto3
 import streamlit as st # 1.35.0
 import pandas as pd
 from PIL import Image
@@ -31,7 +31,7 @@ S3_IMAGE_BUCKET = 'mhist-streamlit-app'
 S3_URL_ORIGINALS = "https://mhist-streamlit-app.s3.us-west-1.amazonaws.com/images/test-set/original/"
 API_URL = 'https://ud4rhytiik.execute-api.us-west-1.amazonaws.com/'
 S3_DIR_ORIGINALS="images/test-set/original/"
-sample_image_path = 'MHIST_bge.png' # for testing purposes
+# image_path = 'MHIST_aah.png' # for testing purposes
 
 # Metadata about the scans
 # 'name' : MHIST_<code>.png    # image codes are 3 letters long
@@ -151,29 +151,29 @@ if st.button('Analyze'):
             messages = [
                 'Sending a JSON request to the Lambda Function',
                 'Running real-time inference',
-                'This model is performing complex calculations with 125 million parameters!',
                 'Doing some dishes while I wait...',
-                'Waiting for a response',
                 'Does anyone feel like we\'re getting ghosted?',
                 'Almost done...',
-                'Does you know any good jokes?',
-                'AI hasn\'t learned how to tell (funny) jokes yet. <crickets>',
+                'Does anyone know any good jokes?',
+                'A.I. hasn\'t learned how to tell (funny) jokes yet... <crickets>',
                 'Really almost done.',
                 'Almost really done.']
             message = messages[randrange(0, len(messages))]
             with st.spinner(message):
                 print('\nimage_path', image_path)
-                pred = predict(S3_URL_ORIGINALS+image_path)
+                image_url = S3_URL_ORIGINALS+image_path
+                pred = predict(image_url)
                 f'Prediction from local model: {pred}'
 
-                # 'Get prediction from Lambda'
-                # r = requests.post(API_URL+'predict', json={'Image':image_path})
+                # 'Prediction from Lambda'
+                # r = requests.post(API_URL+'predict', json={'image_url':image_url})
                 # print(r.headers['Content-Type']) #application/json
                 # print('headers:\n', r.headers) #{'Date': 'Wed, 29 May 2024 03:50:21 GMT', 'Content-Type': 'application/json', 'Content-Length': '48', 'Connection': 'keep-alive', 'Apigw-Requestid': 'Yg7eoiIWSK4EJ8Q='}
                 # print(r.encoding) #utf-8
  
             if r is not None and r.status_code == 200:
-                # pred = r.json()[0]
+                pred = r.json()[0]
+                pred
                 st.balloons()
                 # label = pred['label']
                 # score = pred['score']

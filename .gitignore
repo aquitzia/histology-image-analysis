@@ -4,5 +4,6 @@ docker_image_files/lambda_function_local.py
 mhist-venv
 thumb
 artifacts
-utilities.py
+# utilities.py
 requirements.txt
+docker_image_files/lambda_tmp
