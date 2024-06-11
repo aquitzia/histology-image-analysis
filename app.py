@@ -162,18 +162,18 @@ if st.button('Analyze'):
             with st.spinner(message):
                 print('\nimage_path', image_path)
                 image_url = S3_URL_ORIGINALS+image_path
-                pred = predict(image_url)
-                f'Prediction from local model: {pred}'
+                # pred = predict(image_url)
+                # f'Prediction from local model: {pred}'
 
-                # 'Prediction from Lambda'
-                # r = requests.post(API_URL+'predict', json={'image_url':image_url})
+                r = requests.post(API_URL+'predict', json={'image_url':image_url})
                 # print(r.headers['Content-Type']) #application/json
                 # print('headers:\n', r.headers) #{'Date': 'Wed, 29 May 2024 03:50:21 GMT', 'Content-Type': 'application/json', 'Content-Length': '48', 'Connection': 'keep-alive', 'Apigw-Requestid': 'Yg7eoiIWSK4EJ8Q='}
                 # print(r.encoding) #utf-8
  
             if r is not None and r.status_code == 200:
+                'Response:\n', r
                 pred = r.json()[0]
-                pred
+                'Prediction from Lambda:', pred
                 st.balloons()
                 # label = pred['label']
                 # score = pred['score']
