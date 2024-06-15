@@ -1,7 +1,7 @@
-# Run inference with ONNX model downloaded from MLflow server:
-# about 4.3 GB memory use???
+# Run inference with ONNX model downloaded from MLflow server
 import os
 import time
+import json
 
 # To download and run model
 import mlflow
@@ -17,11 +17,29 @@ from torchvision import transforms
 # ONNX_MODEL_PATH = 'artifacts/mhist_dynamo_model.onnx' #1.4G
 
 ### MLflow information required for downloading artifacts:
-MLFLOW_SERVER="http://ec2-3-101-143-87.us-west-1.compute.amazonaws.com:5000"
+MLFLOW_SERVER="http://ec2-54-215-248-114.us-west-1.compute.amazonaws.com:5000"
 mlflow.set_tracking_uri(MLFLOW_SERVER)
-MLFLOW_RUN = "4b90e0f629f948a4845a0533aa795b01" # run_name = orderly-shrike-695
+MLFLOW_RUN = "53962bd1fead46f6bd9d647a43e7f492" # run_name = bittersweet-lark-524
 MLFLOW_MODEL_PATH = 'onnx_artifacts'
-LAMBDA_TMP = 'lambda_tmp/'
+LOCAL_MODEL_DIR = os.getcwd()
+
+
+# Download ONNX model from MLflow server
+def download_latest_model():
+    print('MLflow Tracking URI:', mlflow.get_tracking_uri())
+    run = mlflow.get_run(MLFLOW_RUN)
+    print('MLflow runName =', run.data.tags['mlflow.runName'], 'run_id =', run.info.run_id)
+    print('Current working directory:', LOCAL_MODEL_DIR)
+    # tags = run.data.tags
+    # metrics = run.data.metrics
+
+    start_time = time.monotonic()
+    mlflow_files = mlflow.artifacts.download_artifacts(tracking_uri=MLFLOW_SERVER, run_id=MLFLOW_RUN, artifact_path=MLFLOW_MODEL_PATH, dst_path=LOCAL_MODEL_DIR)
+    downloaded_time = time.monotonic()
+    print('Downloaded model files:\n', mlflow_files)#os.listdir(LOCAL_MODEL_DIR))
+    print(f'Downloaded model in {(downloaded_time-start_time):.2f}s')
+    # mlflow_files=mlflow.artifacts.list_artifacts(tracking_uri=MLFLOW_SERVER, run_id=MLFLOW_RUN, artifact_path=MLFLOW_MODEL_PATH)
+
 
 def preprocess(image_url):
     # print('image_url', image_url)
@@ -46,47 +64,32 @@ def preprocess(image_url):
     # print('preprocessed_image shape', preprocessed_image.shape)
     return preprocessed_image
 
-def predict(image_url): # <class '_io.BytesIO'>
-    # Download model files from MLflow server to Lambda tmp/
-    print('MLflow Tracking URI:', mlflow.get_tracking_uri())
-    model_uri = f"runs:/{MLFLOW_RUN}/{MLFLOW_MODEL_PATH}"
-    # print('model_uri', model_uri)
-    start_time = time.monotonic()
-    model = mlflow.onnx.load_model(model_uri=model_uri, dst_path=LAMBDA_TMP) # returns <class 'onnx.onnx_ml_pb2.ModelProto'> <class 'mlflow.pyfunc.PyFuncModel'>
-    downloaded_time = time.monotonic()
-    serialized = model.SerializeToString() # <class 'bytes'>
-    serialized_time = time.monotonic()
-    print(f'downloaded model in {(start_time-downloaded_time):.2f}s')
-    print(f'serialized model in {(downloaded_time-serialized_time):.2f}s')
 
-    # mlflow_files = mlflow.artifacts.download_artifacts(tracking_uri=MLFLOW_SERVER, run_id=MLFLOW_RUN, artifact_path=MLFLOW_MODEL_PATH, dst_path=LAMBDA_TMP)
-    print('Downloaded model files:\n', os.listdir(LAMBDA_TMP))
-    # mlflow_files=mlflow.artifacts.list_artifacts(tracking_uri=MLFLOW_SERVER, run_id=MLFLOW_RUN, artifact_path=MLFLOW_MODEL_PATH)
-
-    # Get MLflow model run info:
-    run = mlflow.get_run(MLFLOW_RUN)
-    # print('MLflow Run ID:', run.info.run_id)
-    run_name = run.data.tags['mlflow.runName']
-    print('Run name:', run_name)
-    # tags = run.data.tags
-    # metrics = run.data.metrics
-
-    # Run inference with downloaded ONNX model
-    onnx_dir = os.path.join(LAMBDA_TMP, MLFLOW_MODEL_PATH)
+def init_model():
+    onnx_dir = os.path.join(MLFLOW_MODEL_PATH, 'mhist_dynamo_model.onnx')
     # session_options = onnxruntime.SessionOptions()
     # session_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
-    ort_session = InferenceSession(serialized, providers=['CPUExecutionProvider'])
-    # result = onx.infer(preprocessed_image)
-    input_name = ort_session.get_inputs()[0].name
+    ort_session = InferenceSession(onnx_dir, providers=['CPUExecutionProvider'])
+    return ort_session
+
+
+# Run inference with local ONNX model
+def predict(image_url, ort_session): # <class '_io.BytesIO'>    
     start_inference = time.monotonic()
     preprocessed_image = preprocess(image_url)
     preprocess_time = time.monotonic()
-    ort_outs = ort_session.run(None, {input_name: preprocessed_image})
+    input_name = ort_session.get_inputs()[0].name
+    ort_outs = ort_session.run(None, {input_name: preprocessed_image}) # ort_outs: [array([-1.2028292], dtype=float32)]
+    # result = ort_session.infer(preprocessed_image)
     inference_time = time.monotonic()
-    # print('ort_outs', ort_outs) # [array([-1.2028292], dtype=float32)]
-    print(f'preprocessed image in {(start_inference-preprocess_time):.2f}s')
-    print(f'classified image in {(preprocess_time-inference_time):.2f}s')
 
-    logit = ort_outs[0].item() # <class 'numpy.ndarray'> shape (1,) dtype=float32
-    # print('ONNX model logit =', logit)
-    return 'SSA' if logit > 0 else 'HP'
+    # print('logits_numpy', ort_outs[0]) # <class 'numpy.ndarray'> shape (1,) dtype=float32
+    y_pred = torch.sigmoid(torch.from_numpy(ort_outs[0])).item()
+    positive_class = y_pred > 0.5
+    json_info = json.dumps({
+        'preprocess_time': preprocess_time-start_inference,
+        'inference_time': inference_time-preprocess_time,
+        'probability': y_pred if positive_class else 1-y_pred,
+        'predicted_class': 'SSA' if positive_class else 'HP'
+        })
+    return json_info

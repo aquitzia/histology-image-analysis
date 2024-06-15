@@ -1,9 +1,8 @@
-/Users/angie/Documents/Bootcamp/5 ML Ops/14_mlops-main
-.github/
-docker_image_files/lambda_function_local.py
+mhist-project.code-workspace
 mhist-venv
-thumb
-artifacts
-# utilities.py
+docker_image_files/lambda_function_local.py
+docker_image_files/Dockerfile_local
 requirements.txt
-lambda_tmp
+onnx_artifacts
+thumb/
+.github/
