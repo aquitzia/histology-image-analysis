@@ -181,7 +181,7 @@ if st.button('Analyze') or code:
                 # print('headers:\n', r.headers) #{'Date': 'Wed, 29 May 2024 03:50:21 GMT', 'Content-Type': 'application/json', 'Content-Length': '48', 'Connection': 'keep-alive', 'Apigw-Requestid': 'Yg7eoiIWSK4EJ8Q='}
                 # print(r.encoding) #utf-8
                 r_dict = json.loads(r.text)
-                print('Completed inference on image_filename', st.session_state.selected_filename, 'logit', r_dict['lgoit'])
+                print('Completed inference on image_filename', st.session_state.selected_filename, 'logit', r_dict['logit'])
                 pred_text = sub_menu_options[1] if r_dict['predicted_class'] == 'SSA' else sub_menu_options[0]
                 correct = r_dict['predicted_class'] == st.session_state.label
                 class_type = 'positive' if r_dict['predicted_class'] == 'SSA' else 'negative'
