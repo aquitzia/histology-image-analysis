@@ -91,13 +91,21 @@ def predict(image_filename): # image_url <class '_io.BytesIO'>
     positive_prob = sigmoid(ort_outs[0]).item() # <class 'numpy.ndarray'> shape (1,) dtype=float32
     pred = positive_prob > 0.5
     # print('ONNX pred =', pred)
-    inference_info = json.dumps({
+    inference_info = {#json.dumps({
         'preprocess_time': preprocess_time-start_inference,
         'inference_time': inference_time-preprocess_time,
         'probability': positive_prob if pred else 1-positive_prob,
         'predicted_class': 'SSA' if pred else 'HP'
-        })
+        }
     return inference_info
+
+
+def json_response(inference_info):
+    return {
+        "statusCode": 200,
+        "headers": {"Content-Type": "application/json"},
+        "body": json.dumps(inference_info)
+    }
 
 
 def lambda_handler(event, context):
@@ -111,8 +119,8 @@ def lambda_handler(event, context):
         # image_filename = event['image_filename']
         image_filename = decodedEvent['image_filename']
         # print('Lambda starting inference on ', image_filename)
-        pred = predict(image_filename)
-        return pred
+        inference_info = predict(image_filename)
+        return json_response(inference_info)
 
     elif action == INFO_PATH:
         # re_train()
