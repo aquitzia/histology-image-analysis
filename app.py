@@ -6,6 +6,7 @@
 # Python version 3.11.9 (main, May 14 2024, 08:23:55) [GCC 10.2.1 20210110]
 
 import os
+import time
 import random
 from random import randrange
 import requests
@@ -13,7 +14,7 @@ import json
 
 import streamlit as st # 1.35.0
 import pandas as pd # 2.2.2
-from utilities import predict, init_model
+# from utilities import predict, init_model
 
 # Initialize state (once per app/user session)
 if 'first_run' not in st.session_state:
@@ -25,7 +26,7 @@ if 'first_run' not in st.session_state:
     # {stage_name} deployment stage (e.g., prod, dev, etc.)
     # {resource_path} the endpoint that triggers the Lambda function
     st.session_state.S3_URL_ORIGINALS = "https://mhist-streamlit-app.s3.us-west-1.amazonaws.com/images/test-set/original/"
-    st.session_state.MODEL_ENDPOINT = 'https://ud4rhytiik.execute-api.us-west-1.amazonaws.com/'
+    st.session_state.LAMBDA_FUNCTION = 'https://msztnjekn7.execute-api.us-west-1.amazonaws.com/'
     st.session_state.THUMB_DIR="thumb"
     
     # Metadata about the scans
@@ -34,8 +35,8 @@ if 'first_run' not in st.session_state:
     # 'experts' = 0 through 7      # int
     st.session_state.test_df = pd.read_csv('testset_features.csv')
     
-    # ONNX Runtime Session loads the model, then can be re-used
-    st.session_state.ort_session = init_model() # This wouldn't work well here with Lambda (session would be limited to 15 min, so would move it to Lambda invocation and add logic)
+    # # ONNX Runtime Session loads the model, then can be re-used
+    # st.session_state.ort_session = init_model() # This wouldn't work well here with Lambda (session would be limited to 15 min, so would move it to Lambda invocation and add logic)
 
     # User selections
     st.session_state.random_menu = None
@@ -95,7 +96,7 @@ st.caption('- SSA: sessile serrated adenoma (precancerous)')
 st.caption('More information on the dataset:\nhttps://arxiv.org/abs/2101.12355')
 
 '**Test the ML model**'
-'You can test the model by selecting an image for real-time analysis (model inference). The model has never seen the tissue sections in the following set of images.'
+'You can test the model by selecting an image for real-time analysis (model inference). The model has not been trained on the tissue sections in the following set of images.'
 
 # the first two menu options have the same submenu options
 # the third menu option has no submenu
@@ -148,7 +149,7 @@ if st.button('Analyze') or code:
             validate_code() # if code is valid, update filename, else throw error
         # if code is None, keep filename
 
-        if st.session_state.selected_filename is not None: # no file selected, or code is invalid
+        if st.session_state.selected_filename is not None: # skip this if no file selected yet, or code is invalid
             # print('validated filename', st.session_state.selected_filename)
             # Display the image from S3 and get the pred from Lambda
             code = st.session_state.selected_filename[6:-4] # strip "MHIST_" and ".png" (slice first 6 chars and last 4)
@@ -167,37 +168,36 @@ if st.button('Analyze') or code:
                 'Almost really done.']
             message = messages[randrange(0, len(messages))]
             with st.spinner(message):
-                image_url = st.session_state.S3_URL_ORIGINALS+st.session_state.selected_filename
+                post_start = time.monotonic()
+                r = requests.post(st.session_state.LAMBDA_FUNCTION+'predict', json={'image_filename':st.session_state.selected_filename})
+                lambda_runtime = time.monotonic() - post_start
 
-                results = predict(image_url, st.session_state.ort_session)
-                r_dict = json.loads(results)
-                # print(r_dict)
+                # image_url = st.session_state.S3_URL_ORIGINALS+st.session_state.selected_filename
+                # results = predict(image_url, st.session_state.ort_session)
+                # r_dict = json.loads(results)
+
+
+            if r is not None and r.status_code == 200:
+                print(r.headers['Content-Type']) #application/json
+                print('headers:\n', r.headers) #{'Date': 'Wed, 29 May 2024 03:50:21 GMT', 'Content-Type': 'application/json', 'Content-Length': '48', 'Connection': 'keep-alive', 'Apigw-Requestid': 'Yg7eoiIWSK4EJ8Q='}
+                print(r.encoding) #utf-8
+                r_dict = json.loads(r.text)
                 pred_text = sub_menu_options[1] if r_dict['predicted_class'] == 'SSA' else sub_menu_options[0]
                 correct = r_dict['predicted_class'] == st.session_state.label
                 class_type = 'positive' if r_dict['predicted_class'] == 'SSA' else 'negative'
-                f'Prediction from local model: {pred_text}, which is a {str(correct).lower()} {class_type}'
-                f'Model\'s predicted probability: {r_dict['probability']*100:.2f}%'
-                f'Preprocessed image in {r_dict['preprocess_time']:.2f} seconds'
-                f'Classified image in {r_dict['inference_time']:.2f} seconds'
 
-                # r = requests.post(MODEL_ENDPOINT+'predict', json={'image_url':image_url})
-                # print(r.headers['Content-Type']) #application/json
-                # print('headers:\n', r.headers) #{'Date': 'Wed, 29 May 2024 03:50:21 GMT', 'Content-Type': 'application/json', 'Content-Length': '48', 'Connection': 'keep-alive', 'Apigw-Requestid': 'Yg7eoiIWSK4EJ8Q='}
-                # print(r.encoding) #utf-8
-
-            if r is not None and r.status_code == 200:
-                'Response:\n', r
-                pred = r.json()[0] # json.loads(r.text)
-                'Prediction from Lambda:', pred
+                f"**Prediction:** {pred_text}, which is a **{str(correct).lower()} {class_type}**"
+                f"**Model's predicted probability:** {r_dict['probability']*100:.2f}%"
+                f"Preprocessed image in {r_dict['preprocess_time']:.2f} seconds"
+                f"Classified image in **{r_dict['inference_time']:.2f} seconds**"
+                f"Total: {int(round(lambda_runtime))} seconds to send and receive the request from AWS Lambda"
                 st.balloons()
-                # label = pred['label']
-                # score = pred['score']
-                # '**Label:**', label
-                # f'**Score:** {score:14%}'
                 st.caption('*The model was trained on a dataset of only 2,162 images, while the ImageNet dataset currently contains 14 million images.')
 
             else:
-                f"Failed to trigger AWS Lambda function."# Status code: {r.status_code}"
+                "Failed to trigger AWS Lambda function."
+                if r is not None:
+                    f"Status code: {r.status_code}"
 
 # left_col, center_col, right_col = st.columns(3)
 # with center_col:
