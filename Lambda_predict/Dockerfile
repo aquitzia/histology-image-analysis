@@ -5,10 +5,10 @@ FROM public.ecr.aws/lambda/python:3.12
 # to /var/task/, the default working directory.
 RUN python -m pip install --upgrade pip setuptools wheel
 COPY requirements.txt  .
-RUN pip install --upgrade -r requirements.txt --target "${LAMBDA_TASK_ROOT}"
+RUN pip install -r requirements.txt --target "${LAMBDA_TASK_ROOT}"
 
 # Copy function code. /var/task/ is read-only.
-COPY lambda_function_APIGateway.py ${LAMBDA_TASK_ROOT}
+COPY lambda_predict.py ${LAMBDA_TASK_ROOT}
 
 # Use CMD to run the handler (could also be done as a parameter override outside of the Dockerfile)
-CMD [ "lambda_function_APIGateway.lambda_handler" ]
+CMD [ "lambda_predict.lambda_handler" ]

@@ -1,7 +1,7 @@
 mhist-project.code-workspace
+__pycache__
 mhist-venv
-docker_image_files/lambda_function_local.py
-docker_image_files/Dockerfile_local
-onnx_artifacts
+Lambda_predict/lambda_function_local.py
 thumb/
 .github/
+get_ecr_size.py

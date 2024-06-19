@@ -1,103 +1,117 @@
+# This function requires EFS and S3
 import os
 import time
 import json
 
-# To download and run model
-import mlflow
-from onnxruntime import InferenceSession
-
-# To download and preprocess image for inference
-import urllib.request
+import boto3
 from io import BytesIO
 from PIL import Image
-import torch
-from torchvision import transforms
+import numpy as np
+from onnxruntime import InferenceSession
+
+# Mean and std values are calculated from the training data, to normalize the colors (per channel):
+# Model expects the input to be ndarray (150528,), dtype torch.float32
+TRAIN_MEAN = [0.738, 0.649, 0.775]
+TRAIN_STD =  [0.197, 0.244, 0.17]
 
 ### MLflow information required for downloading artifacts:
-MLFLOW_SERVER="http://ec2-3-101-143-87.us-west-1.compute.amazonaws.com:5000"
-mlflow.set_tracking_uri(MLFLOW_SERVER)
-MLFLOW_RUN = "53962bd1fead46f6bd9d647a43e7f492" # run_name = bittersweet-lark-524
-MLFLOW_MODEL_PATH = 'onnx_artifacts/mhist_dynamo_model.onnx'
-LAMBDA_TMP = '/tmp/'    # use /tmp/ for downloading large (ephemeral) files in a Lambda function
+# MLFLOW_SERVER="http://ec2-54-215-248-114.us-west-1.compute.amazonaws.com:5000"
+# mlflow.set_tracking_uri(MLFLOW_SERVER)
+# MLFLOW_RUN = "53962bd1fead46f6bd9d647a43e7f492" # run_name = bittersweet-lark-524
+EFS_ACCESS_POINT = '/mnt/efs' # root directory is mounted here
+MODEL_PATH = 'onnx_artifacts/mhist_dynamo_model.onnx'
+S3_BUCKET = "mhist-streamlit-app"
+S3_ORIGINALS_DIR = "images/test-set/original/"
+# S3_PREPROCESSED_DIR = "images/test-set/preprocessed/"
 
 PREDICT_PATH = '/predict'
 INFO_PATH = '/info'
 
-def preprocess(image_url):
-    # print('image_url', image_url)
-    with urllib.request.urlopen(image_url) as response:
-        image_data = response.read()
-    image_file = BytesIO(image_data)
-    image_PIL = Image.open(image_file).convert('RGB') # PIL Image size (224, 224)
-    # print('image_PIL dimensions', image_PIL.size)
 
-    # Mean and std values are calculated from the training data, to normalize the colors (per channel):
-    # torchvision transforms output will be a single image: torch.Size([150528]), dtype torch.float32
-    # Model expects the input to be ndarray (150528,)
-    train_mean = [0.738, 0.649, 0.775]
-    train_std =  [0.197, 0.244, 0.17]
-    val_MHIST_FCN_transforms = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(train_mean, train_std),
-        transforms.Lambda(lambda x: torch.flatten(x))
-    ])
+def normalize_image(image_bytes):
+    # Convert bytes (buffer) to 3-channels, then to ndarray
+    # We could do this without PIL (using only NumPy)
+    pil_image = Image.open(image_bytes).convert('RGB') # pil_image.size (224, 224) with 3 channels
+    # print('pil_image dimensions', pil_image.size)
+    np_image = np.array(pil_image, dtype=np.float32) # np_image.shape (224, 224, 3) np_image.dtype float32
+    # print('np_image shape', np_image.shape)
+    # print('np_image dtype', np_image.dtype)
 
-    preprocessed_image = val_MHIST_FCN_transforms(image_PIL).numpy() # ndarray shape (150528,)
-    # print('preprocessed_image shape', preprocessed_image.shape)
-    return preprocessed_image
+    # Convert lists to numpy
+    np_mean = np.array(TRAIN_MEAN, dtype=np.float32).reshape(1, 1, 3) # np_mean.shape (1, 1, 3)
+    # print('np_mean shape', np_mean.shape)
+    np_std = np.array(TRAIN_STD, dtype=np.float32).reshape(1, 1, 3) # np_std.shape (1, 1, 3)
+
+    # Normalize
+    # Operations are performed element-wise using NumPy broadcasting
+    np_image = (np_image - np_mean) / np_std
+    return np_image
 
 
-def predict(image_url): # image_url <class '_io.BytesIO'>
-    # Download model files from MLflow server to Lambda tmp/
-    print('MLflow Tracking URI:', mlflow.get_tracking_uri())
-    start_time = time.monotonic()
-    mlflow_files = mlflow.artifacts.download_artifacts(tracking_uri=MLFLOW_SERVER, run_id=MLFLOW_RUN, artifact_path=MLFLOW_MODEL_PATH, dst_path=LAMBDA_TMP)
-    downloaded_time = time.monotonic()
-    print('Downloaded model files:\n', mlflow_files)#os.listdir(LAMBDA_TMP))
-    print(f'Downloaded model in {(downloaded_time-start_time):.2f}s')
-    # mlflow_files=mlflow.artifacts.list_artifacts(tracking_uri=MLFLOW_SERVER, run_id=MLFLOW_RUN, artifact_path=MLFLOW_MODEL_PATH)
+def preprocess(image_filename):
+    # Download image (png file) as bytes from S3
+    image_s3key = os.path.join(S3_ORIGINALS_DIR, image_filename)
+    print('Loading', image_s3key, 'from', S3_BUCKET)
 
-    # Get MLflow model run info:
-    run = mlflow.get_run(MLFLOW_RUN)
-    print('MLflow runName =', run.data.tags['mlflow.runName'], 'run_id =', run.info.run_id)
-    # tags = run.data.tags
-    # metrics = run.data.metrics
+    s3 = boto3.client('s3')
+    file_obj = s3.get_object(Bucket=S3_BUCKET, Key=image_s3key)
+    image_bytes = BytesIO(file_obj['Body'].read())
+    preprocessed_np_image = normalize_image(image_bytes)
 
-    # Run inference with optimized ONNX model and ONNX RunTime pipeline:
+    preprocessed_flattened = np.ravel(preprocessed_np_image)  # ndarray shape (150528,)
+    # print('preprocessed_flattened shape', preprocessed_flattened.shape)
+    return preprocessed_flattened
+
+
+def sigmoid(np_outs):
+    # Clip the values to a reasonable range
+    np_outs = np.clip(np_outs, -50, 50) # prevent np.exp overflow for large values
+    return 1 / (1 + np.exp(-np_outs))
+
+
+def predict(image_filename): # image_url <class '_io.BytesIO'>
+    # print('EFS_ACCESS_POINT contents:', os.listdir(EFS_ACCESS_POINT)) # EFS Access Point has access to the contents of /mhist-lambda
+
+    # Run inference with optimized ONNX model
     # It only uses 3.3 GB CPU memory, and 1.4 GB space (for artifacts)
-    onnx_path = os.path.join(LAMBDA_TMP, 'mhist_dynamo_model.onnx')
+    onnx_path = os.path.join(EFS_ACCESS_POINT, MODEL_PATH)
     print('Loading model from', os.path.abspath(onnx_path))
     # session_options = onnxruntime.SessionOptions()
     # session_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
     ort_session = InferenceSession(os.path.abspath(onnx_path))#, providers=['CPUExecutionProvider'])
-    # result = onx.infer(tweet)
-    input_name = ort_session.get_inputs()[0].name
 
     start_inference = time.monotonic()
-    preprocessed_image = preprocess(image_url)
+    preprocessed_image = preprocess(image_filename)
     preprocess_time = time.monotonic()
-    ort_outs = ort_session.run(None, {input_name: preprocessed_image})
+    input_name = ort_session.get_inputs()[0].name
+    ort_outs = ort_session.run(None, {input_name: preprocessed_image}) # output: [array([-1.2028292], dtype=float32)]
+    # result = ort_session.infer(preprocessed_image)
     inference_time = time.monotonic()
-    # print('ort_outs', ort_outs) # example: [array([-1.2028292], dtype=float32)]
-    print(f'Preprocessed image in {(start_inference-preprocess_time):.2f}s')
-    print(f'Classified image in {(preprocess_time-inference_time):.2f}s')
 
-    logit = ort_outs[0].item() # <class 'numpy.ndarray'> shape (1,) dtype=float32
-    print('ONNX model logit =', logit)
-    return 'SSA' if logit > 0 else 'HP'
+    positive_prob = sigmoid(ort_outs[0]).item() # <class 'numpy.ndarray'> shape (1,) dtype=float32
+    pred = positive_prob > 0.5
+    # print('ONNX pred =', pred)
+    inference_info = json.dumps({
+        'preprocess_time': preprocess_time-start_inference,
+        'inference_time': inference_time-preprocess_time,
+        'probability': positive_prob if pred else 1-positive_prob,
+        'predicted_class': 'SSA' if pred else 'HP'
+        })
+    return inference_info
 
 
 def lambda_handler(event, context):
-    print('Event:', event)
+    # print('Event:', event)
+    # action = event['action'] # API Gateway uses different JSON
     action = event['rawPath'] # API Gateway uses different JSON
     # print('action', action)
 
     if action == PREDICT_PATH:
-        # print('predicting')
         decodedEvent = json.loads(event['body']) # API Gateway uses different JSON
-        image_url = decodedEvent['image_url']
-        print('Lambda starting inference on ', image_url)
-        pred = predict(image_url)
+        # image_filename = event['image_filename']
+        image_filename = decodedEvent['image_filename']
+        # print('Lambda starting inference on ', image_filename)
+        pred = predict(image_filename)
         return pred
 
     elif action == INFO_PATH:

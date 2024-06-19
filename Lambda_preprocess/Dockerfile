@@ -1,6 +1,9 @@
 # Use AWS image for AWS Lambda environment
 FROM public.ecr.aws/lambda/python:3.12
 
+# Force re-build
+RUN echo "Invalidating cache $(date +%s)"
+
 # ${LAMBDA_TASK_ROOT} is an environment variable set by AWS Lambda
 # to /var/task/, the default working directory.
 RUN python -m pip install --upgrade pip setuptools wheel
