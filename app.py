@@ -55,7 +55,7 @@ def get_df(label=None): # 'SSA', 'HP', or 'all'
 def random_path(df):
         return random.choice(df['name'].tolist()) # issue: random.choice doesn't work with a dict-like on this server!
 
-@st.cache_data # cache this container of images in case we use the same one again
+# @st.cache_data # cache this container of images in case we use the same one again
 def display_thumbnails(df):
     with st.container(height=400):  # Automatically scrollable container
         st.image(
@@ -75,7 +75,7 @@ def validate_code():
         code = code.lower()
         filename = f'MHIST_{code}.png'
         #TODO: check whether the image label matches the selected label (SSA or HP)
-        # print('checking filename', filename)
+        # print('filename', filename)
         test_df = st.session_state.test_df # for readability
         if test_df[test_df['name'] == filename].empty:
             st.error('Please check the image code for typos.')
