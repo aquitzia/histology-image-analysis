@@ -172,16 +172,16 @@ if st.button('Analyze') or code:
                 r = requests.post(st.session_state.LAMBDA_FUNCTION+'predict', json={'image_filename':st.session_state.selected_filename})
                 lambda_runtime = time.monotonic() - post_start
 
+                # This uses the local model (on EC2) to run real-time inference:
                 # image_url = st.session_state.S3_URL_ORIGINALS+st.session_state.selected_filename
                 # results = predict(image_url, st.session_state.ort_session)
                 # r_dict = json.loads(results)
-
-
             if r is not None and r.status_code == 200:
-                print(r.headers['Content-Type']) #application/json
-                print('headers:\n', r.headers) #{'Date': 'Wed, 29 May 2024 03:50:21 GMT', 'Content-Type': 'application/json', 'Content-Length': '48', 'Connection': 'keep-alive', 'Apigw-Requestid': 'Yg7eoiIWSK4EJ8Q='}
-                print(r.encoding) #utf-8
+                # print(r.headers['Content-Type']) #application/json
+                # print('headers:\n', r.headers) #{'Date': 'Wed, 29 May 2024 03:50:21 GMT', 'Content-Type': 'application/json', 'Content-Length': '48', 'Connection': 'keep-alive', 'Apigw-Requestid': 'Yg7eoiIWSK4EJ8Q='}
+                # print(r.encoding) #utf-8
                 r_dict = json.loads(r.text)
+                print('Completed inference on image_filename', st.session_state.selected_filename, 'logit', r_dict['lgoit'])
                 pred_text = sub_menu_options[1] if r_dict['predicted_class'] == 'SSA' else sub_menu_options[0]
                 correct = r_dict['predicted_class'] == st.session_state.label
                 class_type = 'positive' if r_dict['predicted_class'] == 'SSA' else 'negative'

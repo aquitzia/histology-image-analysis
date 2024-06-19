@@ -88,14 +88,16 @@ def predict(image_filename): # image_url <class '_io.BytesIO'>
     # result = ort_session.infer(preprocessed_image)
     inference_time = time.monotonic()
 
-    positive_prob = sigmoid(ort_outs[0]).item() # <class 'numpy.ndarray'> shape (1,) dtype=float32
+    logit = ort_outs[0] # <class 'numpy.ndarray'> shape (1,) dtype=float32
+    positive_prob = sigmoid(logit).item()
     pred = positive_prob > 0.5
     # print('ONNX pred =', pred)
     inference_info = {#json.dumps({
+        'logit': logit,
+        'predicted_class': 'SSA' if pred else 'HP',
+        'probability': positive_prob if pred else 1-positive_prob,
         'preprocess_time': preprocess_time-start_inference,
         'inference_time': inference_time-preprocess_time,
-        'probability': positive_prob if pred else 1-positive_prob,
-        'predicted_class': 'SSA' if pred else 'HP'
         }
     return inference_info
 
