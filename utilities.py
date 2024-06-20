@@ -17,7 +17,7 @@ from torchvision import transforms
 # ONNX_MODEL_PATH = 'artifacts/mhist_dynamo_model.onnx' #1.4G
 
 ### MLflow information required for downloading artifacts:
-MLFLOW_SERVER="http://ec2-54-215-248-114.us-west-1.compute.amazonaws.com:5000"
+MLFLOW_SERVER="http://ec2-3-101-21-63.us-west-1.compute.amazonaws.com:5000"
 mlflow.set_tracking_uri(MLFLOW_SERVER)
 MLFLOW_RUN = "53962bd1fead46f6bd9d647a43e7f492" # run_name = bittersweet-lark-524
 MLFLOW_MODEL_PATH = 'onnx_artifacts'
