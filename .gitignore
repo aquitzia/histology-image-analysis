@@ -4,4 +4,5 @@ mhist-venv
 Lambda_predict/lambda_function_local.py
 get_ecr_size.py
 thumb/
+onnx_artifacts
 # .github/
