@@ -191,7 +191,7 @@ if st.button('Analyze') or code:
                 f"Preprocessed image in {r_dict['preprocess_time']:.2f} seconds"
                 f"Classified image in **{r_dict['inference_time']:.2f} seconds**"
                 f"Total: {int(round(lambda_runtime))} seconds to send and receive the request from AWS Lambda"
-                st.balloons()
+                # st.balloons()
                 st.caption('*The model was trained on a dataset of only 2,162 images, while the ImageNet dataset currently contains 14 million images.')
 
             else:

@@ -1,27 +1,46 @@
-# Run inference with ONNX model downloaded from MLflow server
 import os
 import time
 import json
 
-# To download and run model
-import mlflow
+# To run model
 import onnxruntime
 from onnxruntime import InferenceSession
 
-# To download and preprocess image for inference
+# To download and preprocess an image for real-time inference
 import urllib.request
 from io import BytesIO
 from PIL import Image
 import torch
 from torchvision import transforms
-# ONNX_MODEL_PATH = 'artifacts/mhist_dynamo_model.onnx' #1.4G
 
-### MLflow information required for downloading artifacts:
+# To download 977 thumbnails from S3
+import boto3
+S3_BUCKET = "mhist-streamlit-app"
+S3_THUMBS_DIR = "images/test-set/thumb/"
+LOCAL_THUMBS_DIR = "thumb/"
+
+# To download artifacts from MLflow (remotely):
+import mlflow
 MLFLOW_SERVER="http://ec2-3-101-21-63.us-west-1.compute.amazonaws.com:5000"
 mlflow.set_tracking_uri(MLFLOW_SERVER)
 MLFLOW_RUN = "53962bd1fead46f6bd9d647a43e7f492" # run_name = bittersweet-lark-524
-MLFLOW_MODEL_PATH = 'onnx_artifacts'
-LOCAL_MODEL_DIR = os.getcwd()
+MLFLOW_MODEL_PATH = 'onnx_artifacts' #1.4G
+LOCAL_MODEL_DIR = os.getcwd() # Download MLflow dir to this dest
+
+
+# Download files from a directory (prefix) in S3
+def s3_download_files(s3_bucket, s3_dir, local_dest_dir):
+    s3 = boto3.client('s3')
+    print('Downloading from S3 bucket', s3_bucket, 'and filtering by prefix', s3_dir)
+    objects = s3.list_objects_v2(Bucket=s3_bucket, Prefix=s3_dir) # Filter by thumbs prefix
+
+    for i, obj in enumerate(objects['Contents']):
+        file_name = os.path.basename(obj['Key'])
+        if i == 0:
+            print('First filename:', file_name, 'First object key:', obj['Key'])
+        local_path = os.path.join(local_dest_dir, file_name)
+        s3.download_file(s3_bucket, obj['Key'], local_path)
+    print('Downloaded', i+1, 'files to', local_dest_dir)
 
 
 # Download ONNX model from MLflow server
