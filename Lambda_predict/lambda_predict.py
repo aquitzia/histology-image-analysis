@@ -42,8 +42,8 @@ def standardize_image(np_image):
 
 def preprocess(image_filename):
     # Download image (png file) as bytes from S3
-    print('Loading', S3_BUCKET, image_s3key)
     image_s3key = os.path.join(S3_ORIGINALS_DIR, image_filename)
+    # print('Loading', S3_BUCKET, image_s3key)
     s3 = boto3.client('s3')
     file_obj = s3.get_object(Bucket=S3_BUCKET, Key=image_s3key)
     image_bytes = BytesIO(file_obj['Body'].read())
@@ -76,7 +76,7 @@ def predict(image_filename): # image_url <class '_io.BytesIO'>
     # Run inference with optimized ONNX model
     # It only uses 3.3 GB CPU memory, and 1.4 GB space (for artifacts)
     onnx_path = os.path.join(EFS_ACCESS_POINT, MODEL_PATH)
-    print('Loading model from', os.path.abspath(onnx_path))
+    # print('Loading model from', os.path.abspath(onnx_path))
     # session_options = onnxruntime.SessionOptions()
     # session_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
     ort_session = InferenceSession(os.path.abspath(onnx_path))#, providers=['CPUExecutionProvider'])
@@ -90,6 +90,7 @@ def predict(image_filename): # image_url <class '_io.BytesIO'>
     inference_time = time.monotonic()
 
     logit = ort_outs[0].item() # <class 'numpy.ndarray'> shape (1,) dtype=float32
+    # print('logit', logit)
     positive_prob = sigmoid(logit).item()
     pred = positive_prob > 0.5
     # print('ONNX pred =', pred)
