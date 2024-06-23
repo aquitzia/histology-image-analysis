@@ -5,7 +5,7 @@ FROM public.ecr.aws/lambda/python:3.12
 # to /var/task/, the default working directory.
 RUN python -m pip install --upgrade pip setuptools wheel
 COPY requirements.txt  .
-RUN pip install -r requirements.txt --target "${LAMBDA_TASK_ROOT}"
+RUN pip install --upgrade -r requirements.txt --target "${LAMBDA_TASK_ROOT}"
 
 # Copy function code. /var/task/ is read-only.
 COPY lambda_predict.py ${LAMBDA_TASK_ROOT}

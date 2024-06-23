@@ -28,19 +28,11 @@ PREDICT_PATH = '/predict'
 INFO_PATH = '/info'
 
 
-def normalize_image(image_bytes):
-    # Convert bytes (buffer) to 3-channels, then to ndarray
-    # We could do this without PIL (using only NumPy)
-    pil_image = Image.open(image_bytes).convert('RGB') # pil_image.size (224, 224) with 3 channels
-    # print('pil_image dimensions', pil_image.size)
-    np_image = np.array(pil_image, dtype=np.float32) # np_image.shape (224, 224, 3) np_image.dtype float32
-    # print('np_image shape', np_image.shape)
-    # print('np_image dtype', np_image.dtype)
-
+def standardize_image(np_image):
     # Convert lists to numpy
-    np_mean = np.array(TRAIN_MEAN, dtype=np.float32).reshape(1, 1, 3) # np_mean.shape (1, 1, 3)
+    np_mean = np.array(TRAIN_MEAN, dtype=np.float32).reshape(3, 1, 1) # np_mean.shape (3, 1, 1)
     # print('np_mean shape', np_mean.shape)
-    np_std = np.array(TRAIN_STD, dtype=np.float32).reshape(1, 1, 3) # np_std.shape (1, 1, 3)
+    np_std = np.array(TRAIN_STD, dtype=np.float32).reshape(3, 1, 1) # np_std.shape (3, 1, 1)
 
     # Normalize
     # Operations are performed element-wise using NumPy broadcasting
@@ -50,21 +42,30 @@ def normalize_image(image_bytes):
 
 def preprocess(image_filename):
     # Download image (png file) as bytes from S3
+    print('Loading', S3_BUCKET, image_s3key)
     image_s3key = os.path.join(S3_ORIGINALS_DIR, image_filename)
-    print('Loading', image_s3key, 'from', S3_BUCKET)
-
     s3 = boto3.client('s3')
     file_obj = s3.get_object(Bucket=S3_BUCKET, Key=image_s3key)
     image_bytes = BytesIO(file_obj['Body'].read())
-    preprocessed_np_image = normalize_image(image_bytes)
 
-    preprocessed_flattened = np.ravel(preprocessed_np_image)  # ndarray shape (150528,)
-    # print('preprocessed_flattened shape', preprocessed_flattened.shape)
-    return preprocessed_flattened
+    # Convert bytes (buffer) to 3-channels, then to ndarray
+    # We could do this without PIL (using only NumPy)
+    pil_image = Image.open(image_bytes).convert('RGB') # pil_image.size (224, 224) with 3 channels
+    # print('pil_image dimensions', pil_image.size)
+    np_image = np.array(pil_image, dtype=np.float32) # np_image shape (224, 224, 3) dtype float32
+    # print('np_image shape', np_image.shape, 'dtype', np_image.dtype)
+    transposed_np = np.transpose(np_image, (2, 0, 1)) # shape (3, 224, 224) max pixel value = 255.
+    # print('transposed_np shape', transposed_np.shape, 'max pixel value =', np.max(transposed_np))
+    normalized_np = transposed_np / 255.0 # normalize range to [0., 1.]
+    # print('normalized_np image shape', normalized_np.shape, 'max pixel value =', np.max(normalized_np))
+    standardized_np = standardize_image(normalized_np) # normalize color-channels
+    # print('standardized_np image shape', standardized_np.shape)
+    flattened_np = np.ravel(standardized_np)  # ndarray shape (150528,)
+    # print('flattened_np image numpy shape', flattened_np.shape)
+    return flattened_np
 
 
 def sigmoid(np_outs):
-    # Clip the values to a reasonable range
     np_outs = np.clip(np_outs, -50, 50) # prevent np.exp overflow for large values
     return 1 / (1 + np.exp(-np_outs))
 

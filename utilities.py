@@ -12,6 +12,7 @@ from io import BytesIO
 from PIL import Image
 import torch
 from torchvision import transforms
+import numpy as np
 
 # To download 977 thumbnails from S3
 import boto3
@@ -61,7 +62,7 @@ def download_latest_model():
 
 
 def preprocess(image_url):
-    # print('image_url', image_url)
+    print('image_url', image_url)
     with urllib.request.urlopen(image_url) as response:
         image_data = response.read()
     image_file = BytesIO(image_data)
@@ -73,14 +74,18 @@ def preprocess(image_url):
     # Model expects the input to be ndarray (150528,)
     train_mean = [0.738, 0.649, 0.775]
     train_std =  [0.197, 0.244, 0.17]
+
+    # torchvision.transforms.ToTensor: Converts a PIL Image or
+    # numpy.ndarray (H x W x C) in the range [0, 255] to a
+    # torch.FloatTensor of shape (C x H x W) in the range [0.0, 1.0]
     val_MHIST_FCN_transforms = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(train_mean, train_std),
-        transforms.Lambda(lambda x: torch.flatten(x))
+        transforms.Normalize(train_mean, train_std), # Channels must be dim 0
+        transforms.Lambda(lambda x: torch.flatten(x)) # [3, 224, 224] to [150528]
     ])
 
     preprocessed_image = val_MHIST_FCN_transforms(image_PIL).numpy() # ndarray shape (150528,)
-    # print('preprocessed_image shape', preprocessed_image.shape)
+    print('Flattened preprocessed_image numpy shape', preprocessed_image.shape)
     return preprocessed_image
 
 
@@ -112,3 +117,41 @@ def predict(image_url, ort_session): # <class '_io.BytesIO'>
         'predicted_class': 'SSA' if positive_class else 'HP'
         })
     return json_info
+
+
+def get_PILs(filename):
+    S3_URL_ORIGINALS = "https://mhist-streamlit-app.s3.us-west-1.amazonaws.com/images/test-set/original/"
+    S3_BUCKET = "mhist-streamlit-app"
+    S3_ORIGINALS_DIR = "images/test-set/original/"
+    s3 = boto3.client('s3')
+
+    # Copied from above (it was correct when I used it in Streamlit)
+    image_url = S3_URL_ORIGINALS+filename
+    print('URL Lib download: \n image_url', image_url)
+    with urllib.request.urlopen(image_url) as response:
+        image_data = response.read()
+    image_file = BytesIO(image_data)
+    img1 = Image.open(image_file).convert('RGB') # PIL Image size (224, 224)
+
+    # Used this code in Lambda
+    image_s3key = os.path.join(S3_ORIGINALS_DIR, filename)
+    print('Loading png from S3', image_s3key, 'from', S3_BUCKET)
+    file_obj = s3.get_object(Bucket=S3_BUCKET, Key=image_s3key)
+    image_bytes = BytesIO(file_obj['Body'].read())
+    img2 = Image.open(image_bytes).convert('RGB') # pil_image.size (224, 224) with 3 channels
+
+    return img1, img2
+
+def compare_PILs(img1=None, img2=None): # requires two PIL images, ex: img1 = Image.open(img1_path)
+    if img1 is None and img2 is None:
+        TEST_FILENAME = "MHIST_aah.png"
+        img1, img2 = get_PILS(TEST_FILENAME)
+
+    if img1.size != img2.size:
+        print('images are different sizes')
+        return False
+
+    print('Testing pixel by pixel:')
+    arr1 = np.array(img1)
+    arr2 = np.array(img2)
+    return np.array_equal(arr1, arr2)
