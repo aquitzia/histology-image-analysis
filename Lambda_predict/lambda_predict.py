@@ -1,29 +1,26 @@
 # This function requires EFS and S3
 import os
 import time
-import json
 
+# For preprocessing
 import boto3
 from io import BytesIO
 from PIL import Image
 import numpy as np
-from onnxruntime import InferenceSession
 
 # Mean and std values are calculated from the training data, to normalize the colors (per channel):
-# Model expects the input to be ndarray (150528,), dtype torch.float32
 TRAIN_MEAN = [0.738, 0.649, 0.775]
 TRAIN_STD =  [0.197, 0.244, 0.17]
-
-### MLflow information required for downloading artifacts:
-# MLFLOW_SERVER="http://ec2-54-215-248-114.us-west-1.compute.amazonaws.com:5000"
-# mlflow.set_tracking_uri(MLFLOW_SERVER)
-# MLFLOW_RUN = "53962bd1fead46f6bd9d647a43e7f492" # run_name = bittersweet-lark-524
-EFS_ACCESS_POINT = '/mnt/efs' # root directory is mounted here
-MODEL_PATH = 'onnx_artifacts/mhist_dynamo_model.onnx'
 S3_BUCKET = "mhist-streamlit-app"
 S3_ORIGINALS_DIR = "images/test-set/original/"
-# S3_PREPROCESSED_DIR = "images/test-set/preprocessed/"
 
+# For inference
+from onnxruntime import InferenceSession
+EFS_ACCESS_POINT = '/mnt/efs' # root directory is mounted here
+MODEL_PATH = 'onnx_artifacts/mhist_dynamo_model.onnx' # in EFS
+
+# For Lambda
+import json
 PREDICT_PATH = '/predict'
 INFO_PATH = '/info'
 
@@ -40,6 +37,8 @@ def standardize_image(np_image):
     return np_image
 
 
+# Model expects the input to be ndarray (150528,), dtype torch.float32
+# Images are normalized to range [0., 1.] and standardized by channel
 def preprocess(image_filename):
     # Download image (png file) as bytes from S3
     image_s3key = os.path.join(S3_ORIGINALS_DIR, image_filename)

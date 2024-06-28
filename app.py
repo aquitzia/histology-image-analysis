@@ -14,7 +14,7 @@ import json
 
 import streamlit as st # 1.35.0
 import pandas as pd # 2.2.2
-# from utilities import predict, init_model
+from utilities import predict #, init_model
 
 # Initialize state (once per app/user session)
 if 'first_run' not in st.session_state:
@@ -91,8 +91,8 @@ def input_img_code():
 'Version 0.0.1'
 st.caption('The MHIST dataset contains images of tissue sections of colorectal polyps under a microscope. The model is trained on a common and clinically-significant (binary classification) task in gastrointestinal pathology.')
 st.caption('There are two possible labels for each image:')
-st.caption('- HP: hyperplastic polyp (benign), and')
-st.caption('- SSA: sessile serrated adenoma (precancerous)')
+st.caption('- **HP**: hyperplastic polyp (benign), and')
+st.caption('- **SSA**: sessile serrated adenoma (precancerous)')
 st.caption('More information on the dataset:\nhttps://arxiv.org/abs/2101.12355')
 
 '**Test the ML model**'
@@ -138,7 +138,67 @@ elif selected is not None:    # Default: type in an image code
 
 ### Analyze ###
 code = st.session_state.selected_image_code # for readability
-if st.button('Analyze') or code:
+if st.button('Analyze with the MLP model'):
+    r = None # No http response (or request)
+    if st.session_state.selected_filename is None and code is None:
+        st.error("Please select an image, then click \"Analyze.\"")
+    else:
+        # We don't need to validate the image filename because users can't type in a filename (only a code)
+        if code is not None: # user entered a code
+            st.session_state.selected_filename = None # delete old filename
+            validate_code() # if code is valid, update filename, else throw error
+        # if code is None, keep filename
+
+        if st.session_state.selected_filename is not None: # skip this if no file selected yet, or code is invalid
+            # Display the image from S3 and get the pred from Lambda
+            code = st.session_state.selected_filename[6:-4] # strip "MHIST_" and ".png" (slice first 6 chars and last 4)
+            st.columns(3)[1].image(image=st.session_state.S3_URL_ORIGINALS+st.session_state.selected_filename, caption=code, use_column_width="auto") # fit image within the Streamlit app column width
+            # print('s3 path:', S3_URL_ORIGINALS+st.session_state.selected_filename)
+
+            messages = [
+                'Sending a JSON request to the Lambda Function',
+                'Running real-time inference',
+                'Doing some dishes while I wait...',
+                # 'Does anyone feel like we\'re getting ghosted?',
+                'It takes about 20 second for AWS Lambda to wake up and respond',
+                'Does anyone know any good jokes?',
+                'A.I. hasn\'t learned how to tell (funny) jokes yet... <crickets>',
+                # 'Really almost done.'
+                ]
+            message = messages[randrange(0, len(messages))]
+            with st.spinner(message):
+                post_start = time.monotonic()
+                r = requests.post(st.session_state.LAMBDA_FUNCTION+'predict', json={'image_filename':st.session_state.selected_filename})
+                lambda_runtime = time.monotonic() - post_start
+            if r is not None and r.status_code == 200:
+                # print(r.headers['Content-Type']) #application/json
+                # print('headers:\n', r.headers) #{'Date': 'Wed, 29 May 2024 03:50:21 GMT', 'Content-Type': 'application/json', 'Content-Length': '48', 'Connection': 'keep-alive', 'Apigw-Requestid': 'Yg7eoiIWSK4EJ8Q='}
+                # print(r.encoding) #utf-8
+                r_dict = json.loads(r.text)
+                print('Completed inference on image_filename', st.session_state.selected_filename, 'logit', r_dict['logit'])
+                pred_text = sub_menu_options[1] if r_dict['predicted_class'] == 'SSA' else sub_menu_options[0]
+                correct = r_dict['predicted_class'] == st.session_state.label
+                class_type = 'positive' if r_dict['predicted_class'] == 'SSA' else 'negative'
+
+                '***Results from the multi-layer perceptron (MLP) model running real-time inference on AWS Lambda***'
+                f"**Prediction:** {pred_text}, which is a **{str(correct).lower()} {class_type}**"
+                f"**Model's predicted probability:** {r_dict['probability']*100:.2f}%"
+                f"Preprocessed image in {r_dict['preprocess_time']:.2f} seconds"
+                f"Classified image in **{r_dict['inference_time']:.2f} seconds**"
+                f"Total: {lambda_runtime:.2f} seconds to send and receive the request from AWS Lambda"
+                # st.balloons()
+                st.caption('*The model was trained on a dataset of only 2,162 images, while the ImageNet dataset currently contains 14 million images.')
+
+            else:
+                "Failed to trigger AWS Lambda function."
+                if r is not None:
+                    f"Status code: {r.status_code}"
+            # if st.button('Read about the MLP model and AWS Lambda system design'):
+            with open("mlp_info.md", "r") as f:
+                mlp_file = f.read()
+            mlp_file
+
+if st.button('Analyze with the ViT model'):
     r = None # No http response (or request)
     if st.session_state.selected_filename is None and code is None:
         st.error("Please select an image, then click \"Analyze.\"")
@@ -160,48 +220,39 @@ if st.button('Analyze') or code:
                 'Sending a JSON request to the Lambda Function',
                 'Running real-time inference',
                 'Doing some dishes while I wait...',
-                'Does anyone feel like we\'re getting ghosted?',
-                'Almost done...',
+                # 'Does anyone feel like we\'re getting ghosted?',
+                'It takes about 20 second for AWS Lambda to wake up and respond',
                 'Does anyone know any good jokes?',
                 'A.I. hasn\'t learned how to tell (funny) jokes yet... <crickets>',
-                'Really almost done.',
-                'Almost really done.']
+                # 'Really almost done.'
+                ]
             message = messages[randrange(0, len(messages))]
             with st.spinner(message):
-                post_start = time.monotonic()
-                r = requests.post(st.session_state.LAMBDA_FUNCTION+'predict', json={'image_filename':st.session_state.selected_filename})
-                lambda_runtime = time.monotonic() - post_start
-
-                # This uses the local model (on EC2) to run real-time inference:
-                # image_url = st.session_state.S3_URL_ORIGINALS+st.session_state.selected_filename
-                # results = predict(image_url, st.session_state.ort_session)
+                local_start = time.monotonic()
+                # print('filename:', st.session_state.selected_filename)
+                local_dict = predict(st.session_state.selected_filename)#, st.session_state.ort_session)
+                local_runtime = time.monotonic() - local_start
                 # r_dict = json.loads(results)
-            if r is not None and r.status_code == 200:
-                # print(r.headers['Content-Type']) #application/json
-                # print('headers:\n', r.headers) #{'Date': 'Wed, 29 May 2024 03:50:21 GMT', 'Content-Type': 'application/json', 'Content-Length': '48', 'Connection': 'keep-alive', 'Apigw-Requestid': 'Yg7eoiIWSK4EJ8Q='}
-                # print(r.encoding) #utf-8
-                r_dict = json.loads(r.text)
-                print('Completed inference on image_filename', st.session_state.selected_filename, 'logit', r_dict['logit'])
-                pred_text = sub_menu_options[1] if r_dict['predicted_class'] == 'SSA' else sub_menu_options[0]
-                correct = r_dict['predicted_class'] == st.session_state.label
-                class_type = 'positive' if r_dict['predicted_class'] == 'SSA' else 'negative'
 
+                '***Results from the Vision Transformer (ViT) model running real-time inference on EC2***'
+                print('Completed inference on image_filename', st.session_state.selected_filename, 'logit', local_dict['logit'])
+                pred_text = sub_menu_options[1] if local_dict['predicted_class'] == 'SSA' else sub_menu_options[0]
+                correct = local_dict['predicted_class'] == st.session_state.label
+                class_type = 'positive' if local_dict['predicted_class'] == 'SSA' else 'negative'
                 f"**Prediction:** {pred_text}, which is a **{str(correct).lower()} {class_type}**"
-                f"**Model's predicted probability:** {r_dict['probability']*100:.2f}%"
-                f"Preprocessed image in {r_dict['preprocess_time']:.2f} seconds"
-                f"Classified image in **{r_dict['inference_time']:.2f} seconds**"
-                f"Total: {int(round(lambda_runtime))} seconds to send and receive the request from AWS Lambda"
-                # st.balloons()
-                st.caption('*The model was trained on a dataset of only 2,162 images, while the ImageNet dataset currently contains 14 million images.')
+                f"**Model's predicted probability:** {local_dict['probability']*100:.2f}%"
+                # f"Loaded model in {local_dict['model_load_time']:.2f} seconds"
+                f"Preprocessed image in {local_dict['preprocess_time']:.2f} seconds"
+                f"Classified image in **{local_dict['inference_time']:.2f} seconds**"
+                f"Total: {local_runtime:.2f} seconds"
 
-            else:
-                "Failed to trigger AWS Lambda function."
-                if r is not None:
-                    f"Status code: {r.status_code}"
+            # if st.button('Read about the ViT model and AWS EC2 system design'):
+            with open("vit_info.md", "r") as f:
+                vit_file = f.read()
+            vit_file
+
+
 
 # left_col, center_col, right_col = st.columns(3)
 # with center_col:
-if st.button('Get model info'):
-    with open("README.md", "r") as f:
-        mdf = f.read()
-    mdf
+

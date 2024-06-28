@@ -1,8 +1,8 @@
 mhist-project.code-workspace
 __pycache__
-mhist-venv
 Lambda_predict/lambda_function_local.py
 get_ecr_size.py
 thumb/
 onnx_artifacts
+mhist-venv
 # .github/
