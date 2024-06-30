@@ -1,5 +1,6 @@
 # Use AWS image for AWS Lambda environment
-FROM public.ecr.aws/lambda/python:3.12
+# --platform option is to build on Mac for Linux
+FROM  --platform=linux/amd64 public.ecr.aws/lambda/python:3.12
 
 # ${LAMBDA_TASK_ROOT} is an environment variable set by AWS Lambda
 # to /var/task/, the default working directory.

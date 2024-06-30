@@ -1,10 +1,6 @@
+boto3 # pre-installed on Lambda, but not Docker image
 numpy<2.0.0 # the new numpy has compatibility issues with onnxruntime 1.18.0
 pillow>=10.3.0
 onnxruntime>=1.18.0
 flask>=2.3.2
 gunicorn>=20.1.0
-# torch>=2.3.1
-# torchvision>=0.18.1
-# mlflow>=2.13.2
-# onnx>=1.16.1
-# boto3 is pre-installed on Lambda

@@ -1,0 +1,10 @@
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - /mnt/efs/mhist-lambda:/mnt/efs/mhist-lambda:ro # use mount as read-only
+    environment:
+      - VIT_MODEL_PATH=/mnt/efs/mhist-lambda/onnx_artifacts/mhist_vit_f1_dynamo_model.onnx # EFS access point, MLflow artifacts path, onnx model
+    restart: unless-stopped
