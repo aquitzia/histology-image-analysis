@@ -29,7 +29,7 @@ MODEL_PATH = 'onnx_artifacts/mhist_vit_f1_dynamo_model.onnx' # in EFS
 
 # To download artifacts from MLflow (remotely):
 import mlflow
-MLFLOW_SERVER="http://ec2-3-101-21-63.us-west-1.compute.amazonaws.com:5000"
+MLFLOW_SERVER="http://13.52.243.246:5000"
 mlflow.set_tracking_uri(MLFLOW_SERVER)
 MLFLOW_RUN = '36bf8fc8ca8b4d8c8788a9b6e74c6099' # run_name = shivering-worm-829
 MLFLOW_MODEL_PATH = 'onnx_artifacts' #327.63MB
@@ -55,7 +55,7 @@ def init_model():
     return ort_session, load_time
 
 # Pre-load the model once (in 5.25 seconds), for quick inference every time
-ORT_SESSION, LOAD_TIME = init_model()
+# ORT_SESSION, LOAD_TIME = init_model()
 
 
 def s3_get_object(image_filename):
@@ -155,20 +155,19 @@ def predict(image_filename): # image_url <class '_io.BytesIO'>
 
 
 # Download ONNX model from MLflow server (called manually)
-def download_latest_model():
+def download_latest_model(mlflow_run_id):
     print('MLflow Tracking URI:', mlflow.get_tracking_uri())
-    run = mlflow.get_run(MLFLOW_RUN)
+    run = mlflow.get_run(mlflow_run_id)
     print('MLflow runName =', run.data.tags['mlflow.runName'], 'run_id =', run.info.run_id)
-    print('Current working directory:', LOCAL_MODEL_DIR)
     # tags = run.data.tags
     # metrics = run.data.metrics
 
     start_time = time.monotonic()
-    mlflow_files = mlflow.artifacts.download_artifacts(tracking_uri=MLFLOW_SERVER, run_id=MLFLOW_RUN, artifact_path=MLFLOW_MODEL_PATH, dst_path=EFS_ACCESS_POINT)
+    mlflow_files = mlflow.artifacts.download_artifacts(tracking_uri=MLFLOW_SERVER, run_id=mlflow_run_id, artifact_path=MLFLOW_MODEL_PATH, dst_path=EFS_ACCESS_POINT)
     downloaded_time = time.monotonic()
     print('Downloaded model files:\n', mlflow_files)#os.listdir(LOCAL_MODEL_DIR))
     print(f'Downloaded model in {(downloaded_time-start_time):.2f}s')
-    # mlflow_files=mlflow.artifacts.list_artifacts(tracking_uri=MLFLOW_SERVER, run_id=MLFLOW_RUN, artifact_path=MLFLOW_MODEL_PATH)
+    # mlflow_files=mlflow.artifacts.list_artifacts(tracking_uri=MLFLOW_SERVER, run_id=mlflow_run_id, artifact_path=MLFLOW_MODEL_PATH)
 
 
 # Download files from a directory (prefix) in S3

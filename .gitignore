@@ -6,3 +6,4 @@ thumb/
 onnx_artifacts
 mhist-venv
 # .github/
+.github/workflows/update-model.yml

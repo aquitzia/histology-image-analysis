@@ -6,7 +6,6 @@ COPY requirements.txt .
 # RUN python -m pip install --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-# ENV VIT_MODEL_PATH=/mnt/efs/mhist-lambda/onnx_artifacts/mhist_vit_f1_dynamo_model.onnx
 
 # Use the application named app located in the server module
 # gunicorn -b :$PORT server:app

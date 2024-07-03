@@ -117,7 +117,7 @@ class ModelHandler:
 
         logit = ort_outs[0].item() # <class 'numpy.ndarray'> shape (1,) dtype=float32
         positive_prob = self.__sigmoid(logit).item()
-        pred = positive_prob > 0.5
+        pred = positive_prob > 0.3
         self.logger.info(f'ONNX model ran inference on image_filename{image_filename} logit {logit}')
         inference_info = {
             'logit': logit, # check image_filename MHIST_aah.png logit=2.16929292678833

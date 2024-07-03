@@ -14,9 +14,8 @@ app = Flask(__name__)
 
 # Pre-load the model once (in 1.2 seconds), for faster inference
 model_path = os.environ['VIT_MODEL_PATH']
-# model_path = os.environ.get('VIT_MODEL_PATH', '/mnt/efs/mhist-lambda/onnx_artifacts/mhist_vit_f1_dynamo_model.onnx')
 # print(f"All environment variables: {os.environ}")
-logger.info(f'\nLoading model from {model_path}')#os.path.abspath(model_path))
+logger.info(f'\nLoading model from {model_path}')
 model = ModelHandler(model_path, model_logger)
 
 
