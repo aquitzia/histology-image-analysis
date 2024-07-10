@@ -27,7 +27,7 @@ if 'first_run' not in st.session_state:
     # {resource_path} the endpoint that triggers the Lambda function
     st.session_state.S3_URL_ORIGINALS = "https://mhist-streamlit-app.s3.us-west-1.amazonaws.com/images/test-set/original/"
     st.session_state.LAMBDA_FUNCTION = 'https://msztnjekn7.execute-api.us-west-1.amazonaws.com/'
-    st.session_state.FLASK_ENDPOINT = 'http://localhost:5000/' #13.52.243.246
+    st.session_state.FLASK_ENDPOINT = 'http://localhost:5050/' #13.52.243.246
     st.session_state.THUMB_DIR="thumb"
     
     # Metadata about the scans
@@ -137,7 +137,7 @@ elif selected is not None:    # Default: type in an image code
     st.text_input("Enter an image code (3 letters)", placeholder='example: abc', key = 'selected_image_code')
 
 
-### Analyze ###
+### MLP model ###
 code = st.session_state.selected_image_code # for readability
 if st.button('Analyze with the MLP model'):
     r = None # No http response (or request)
@@ -160,11 +160,9 @@ if st.button('Analyze with the MLP model'):
                 'Sending a JSON request to the Lambda Function',
                 'Running real-time inference',
                 'Doing some dishes while I wait...',
-                # 'Does anyone feel like we\'re getting ghosted?',
-                'It takes about 20 second for AWS Lambda to wake up and respond',
+                'It takes about 20 seconds for AWS Lambda to wake up and respond',
                 'Does anyone know any good jokes?',
                 'A.I. hasn\'t learned how to tell (funny) jokes yet... <crickets>',
-                # 'Really almost done.'
                 ]
             message = messages[randrange(0, len(messages))]
             with st.spinner(message):
@@ -194,11 +192,23 @@ if st.button('Analyze with the MLP model'):
                     "Failed to trigger AWS Lambda function."
                     if r is not None:
                         f"Status code: {r.status_code}"
-            if st.button('Read about the MLP model and AWS Lambda system design'):
-                with open("mlp_info.md", "r") as f:
-                    mlp_file = f.read()
-                mlp_file
+if st.button('Read about the MLP model and AWS Lambda system design'):
+    # counts = st.session_state.test_df['label'].value_counts()
+    # col1, col2, _ = st.columns([1, 1, 3])
+    # with col1:
+    #     'Counts'
+    #     st.bar_chart(counts, height=200)
+    # with col2:
+    #     'Percentages'
+    #     total = counts.sum()
+    #     st.bar_chart(counts.apply(lambda x: x / total * 100), height=200)
 
+    with open("mlp_info.md", "r") as f:
+        mlp_file = f.read()
+    mlp_file
+
+
+##### ViT model ###
 if st.button('Analyze with the ViT model'):
     r = None # No http response (or request)
     if st.session_state.selected_filename is None and code is None:
@@ -250,10 +260,10 @@ if st.button('Analyze with the ViT model'):
                     f"Classified image in **{vit_results['inference_time']:.2f} seconds**"
                     f"Total: {flask_runtime:.2f} seconds"
 
-            if st.button('Read about the ViT model and AWS EC2 system design'):
-                with open("vit_info.md", "r") as f:
-                    vit_file = f.read()
-                vit_file
+if st.button('Read about the ViT model and AWS EC2 system design'):
+    with open("vit_info.md", "r") as f:
+        vit_file = f.read()
+    vit_file
 # left_col, center_col, right_col = st.columns(3)
 # with center_col:
 

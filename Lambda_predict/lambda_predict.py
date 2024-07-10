@@ -16,13 +16,38 @@ S3_ORIGINALS_DIR = "images/test-set/original/"
 
 # For inference
 from onnxruntime import InferenceSession
-EFS_ACCESS_POINT = '/mnt/efs' # root directory is mounted here
-MODEL_PATH = 'onnx_artifacts/mhist_dynamo_model.onnx' # in EFS
+EFS_ACCESS_POINT = '/mnt/efs'
+MODEL_PATH = 'onnx_artifacts/mhist_dynamo_model.onnx'
 
 # For Lambda
 import json
 PREDICT_PATH = '/predict'
 INFO_PATH = '/info'
+LOADED_MODEL = None
+
+
+# Run inference with optimized ONNX model
+# It only uses 3.3 GB CPU memory, and 1.4 GB space (for artifacts)
+def init_model():
+    global LOADED_MODEL
+    try:
+        # print('EFS_ACCESS_POINT contents:', os.listdir(EFS_ACCESS_POINT)) # EFS Access Point has access to the contents of /mhist-lambda
+        onnx_path = os.path.join(EFS_ACCESS_POINT, MODEL_PATH)
+        print('Loading model from', os.path.abspath(onnx_path))
+        # session_options = onnxruntime.SessionOptions()
+        # session_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
+        start_loading = time.monotonic()
+        LOADED_MODEL = InferenceSession(os.path.abspath(onnx_path))#, providers=['CPUExecutionProvider'])
+        model_load_time = time.monotonic()
+        print(f'MLP model loaded in {model_load_time} seconds')
+    except ValueError as e:
+        logger.info(f"Value error: {e}") # incorrect input shapes or types
+    except Exception as e:
+        logger.info(f"An unexpected error occurred: {e}")
+
+
+##### Model only needs to be loaded once (not for each prediction)
+init_model()
 
 
 def standardize_image(np_image):
@@ -70,22 +95,13 @@ def sigmoid(np_outs):
 
 
 def predict(image_filename): # image_url <class '_io.BytesIO'>
-    # print('EFS_ACCESS_POINT contents:', os.listdir(EFS_ACCESS_POINT)) # EFS Access Point has access to the contents of /mhist-lambda
-
-    # Run inference with optimized ONNX model
-    # It only uses 3.3 GB CPU memory, and 1.4 GB space (for artifacts)
-    onnx_path = os.path.join(EFS_ACCESS_POINT, MODEL_PATH)
-    # print('Loading model from', os.path.abspath(onnx_path))
-    # session_options = onnxruntime.SessionOptions()
-    # session_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
-    ort_session = InferenceSession(os.path.abspath(onnx_path))#, providers=['CPUExecutionProvider'])
-
     start_inference = time.monotonic()
     preprocessed_image = preprocess(image_filename)
     preprocess_time = time.monotonic()
-    input_name = ort_session.get_inputs()[0].name
-    ort_outs = ort_session.run(None, {input_name: preprocessed_image}) # output: [array([-1.2028292], dtype=float32)]
-    # result = ort_session.infer(preprocessed_image)
+
+    input_name = LOADED_MODEL.get_inputs()[0].name
+    ort_outs = LOADED_MODEL.run(None, {input_name: preprocessed_image}) # output: [array([-1.2028292], dtype=float32)]
+    # result = LOADED_MODEL.infer(preprocessed_image)
     inference_time = time.monotonic()
 
     logit = ort_outs[0].item() # <class 'numpy.ndarray'> shape (1,) dtype=float32
@@ -122,6 +138,9 @@ def lambda_handler(event, context):
         # image_filename = event['image_filename']
         image_filename = decodedEvent['image_filename']
         # print('Lambda starting inference on ', image_filename)
+        if LOADED_MODEL is None:
+            print("Warning: Lambda didn't load the MLP model during init phase.")
+            init_model()
         inference_info = predict(image_filename)
         return json_response(inference_info)
 
