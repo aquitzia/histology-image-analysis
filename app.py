@@ -27,7 +27,7 @@ if 'first_run' not in st.session_state:
     # {resource_path} the endpoint that triggers the Lambda function
     st.session_state.S3_URL_ORIGINALS = "https://mhist-streamlit-app.s3.us-west-1.amazonaws.com/images/test-set/original/"
     st.session_state.LAMBDA_FUNCTION = 'https://msztnjekn7.execute-api.us-west-1.amazonaws.com/'
-    st.session_state.FLASK_ENDPOINT = 'http://54.219.114.203:5000/' #13.52.243.246
+    st.session_state.FLASK_ENDPOINT = 'http://54.219.114.203:5050/' #13.52.243.246
     st.session_state.THUMB_DIR="thumb"
     
     # Metadata about the scans
