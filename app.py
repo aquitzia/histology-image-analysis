@@ -194,10 +194,10 @@ if st.button('Analyze with the MLP model'):
                     if r is not None:
                         f"Status code: {r.status_code}"
 if st.button('Read about the MLP model and AWS Lambda system design'):
+    '**Training Data**'
     counts = st.session_state.train_df['label'].value_counts()
     col1, col2, _ = st.columns([1, 1, 3])
     with col1:
-        '###Training Data:'
         'Sample Counts'
         st.bar_chart(counts, height=200)
     with col2:
