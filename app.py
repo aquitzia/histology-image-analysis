@@ -35,6 +35,7 @@ if 'first_run' not in st.session_state:
     # 'label' = HP or SSA          # binary, categorical label
     # 'experts' = 0 through 7      # int
     st.session_state.test_df = pd.read_csv('testset_features.csv')
+    st.session_state.train_df = pd.read_csv('trainset_features.csv')
     
     # # ONNX Runtime Session loads the model, then can be re-used
     # st.session_state.ort_session = init_model() # This wouldn't work well here with Lambda (session would be limited to 15 min, so would move it to Lambda invocation and add logic)
@@ -193,15 +194,16 @@ if st.button('Analyze with the MLP model'):
                     if r is not None:
                         f"Status code: {r.status_code}"
 if st.button('Read about the MLP model and AWS Lambda system design'):
-    # counts = st.session_state.test_df['label'].value_counts()
-    # col1, col2, _ = st.columns([1, 1, 3])
-    # with col1:
-    #     'Counts'
-    #     st.bar_chart(counts, height=200)
-    # with col2:
-    #     'Percentages'
-    #     total = counts.sum()
-    #     st.bar_chart(counts.apply(lambda x: x / total * 100), height=200)
+    counts = st.session_state.train_df['label'].value_counts()
+    col1, col2, _ = st.columns([1, 1, 3])
+    with col1:
+        '###Training Data:'
+        'Sample Counts'
+        st.bar_chart(counts, height=200)
+    with col2:
+        'Class Percentages'
+        total = counts.sum()
+        st.bar_chart(counts.apply(lambda x: x / total * 100), height=200)
 
     with open("mlp_info.md", "r") as f:
         mlp_file = f.read()
