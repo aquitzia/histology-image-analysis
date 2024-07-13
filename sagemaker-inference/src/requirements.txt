@@ -1,0 +1,4 @@
+boto3
+numpy<2.0.0 # the new numpy has compatibility issues with onnxruntime 1.18.0
+pillow>=10.3.0
+onnxruntime>=1.16.3 # This is specific to SageMaker. Otherwise use version >= 1.18.0
