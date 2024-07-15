@@ -153,12 +153,12 @@ if st.button('Analyze with the MLP model'):
             # print('s3 path:', S3_URL_ORIGINALS+st.session_state.selected_filename)
 
             messages = [
-                'Sending a JSON request to the Lambda Function',
-                'Running real-time inference',
-                'Doing some dishes while I wait...',
-                'It takes about 20 seconds for AWS Lambda to wake up and respond',
-                'Does anyone know any good jokes?',
-                'A.I. hasn\'t learned how to tell (funny) jokes yet... <crickets>',
+                # 'Sending a JSON request to the Lambda Function',
+                # 'Running real-time inference',
+                # 'Doing some dishes while I wait...',
+                'AWS Lambda takes about 20 seconds to respond on a "cold start."',
+                # 'Does anyone know any good jokes?',
+                # 'A.I. hasn\'t learned how to tell (funny) jokes yet... <crickets>',
                 ]
             message = messages[randrange(0, len(messages))]
             with st.spinner(message):
@@ -180,7 +180,11 @@ if st.button('Analyze with the MLP model'):
                     f"**Model's predicted probability:** {r_dict['probability']*100:.2f}%"
                     f"Preprocessed image in {r_dict['preprocess_time']:.2f} seconds"
                     f"Classified image in **{r_dict['inference_time']:.2f} seconds**"
-                    f"Total: {lambda_runtime:.2f} seconds to send and receive the request from AWS Lambda"
+                    if lambda_runtime > 10.:
+                        f"Total: {lambda_runtime:.2f} seconds to send and receive the request from AWS Lambda"
+                        f"AWS Lambda hasn't been invoked recently, so you've experienced a \"cold start.\" If you click the Analyze button again, it will only take about 1 second to respond. On a cold start, a Lambda Function takes some time to provision resources, then load the model and dependencies, before it can run inference."
+                    else:
+                        f"Total: {lambda_runtime:.2f} seconds to send and receive the request from AWS Lambda"
                     # st.balloons()
                     st.caption('*The model was trained on a dataset of only 2,162 images, while the ImageNet dataset currently contains 14 million images.')
 
@@ -225,14 +229,7 @@ if st.button('Analyze with the ViT model'):
             # print('s3 path:', S3_URL_ORIGINALS+st.session_state.selected_filename)
 
             messages = [
-                'Sending a JSON request to the Lambda Function',
                 'Running real-time inference',
-                'Doing some dishes while I wait...',
-                # 'Does anyone feel like we\'re getting ghosted?',
-                'It takes about 20 second for AWS Lambda to wake up and respond',
-                'Does anyone know any good jokes?',
-                'A.I. hasn\'t learned how to tell (funny) jokes yet... <crickets>',
-                # 'Really almost done.'
                 ]
             message = messages[randrange(0, len(messages))]
             with st.spinner(message):
@@ -258,9 +255,21 @@ if st.button('Analyze with the ViT model'):
                     f"Total: {flask_runtime:.2f} seconds"
 
 if st.button('Read about the ViT model and AWS EC2 system design'):
+    # left_col, center_col, right_col = st.columns(3)
+    # with center_col:
     with open("vit_info.md", "r") as f:
         vit_file = f.read()
     vit_file
-# left_col, center_col, right_col = st.columns(3)
-# with center_col:
 
+
+if st.button('Read about the images in the training set'):
+    '**Training Data**'
+    counts = st.session_state.train_df['label'].value_counts()
+    col1, col2, _ = st.columns([1, 1, 3])
+    with col1:
+        'Sample Counts'
+        st.bar_chart(counts, height=200)
+    with col2:
+        'Class Percentages'
+        total = counts.sum()
+        st.bar_chart(counts.apply(lambda x: x / total * 100), height=200)

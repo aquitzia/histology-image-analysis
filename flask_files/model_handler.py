@@ -43,7 +43,7 @@ class ModelHandler:
             s3 = session.client('s3')
 
             image_s3key = os.path.join(S3_ORIGINALS_DIR, image_filename)
-            self.logger.info(f"Loading image from S3: {S3_BUCKET+image_s3key}")
+            # self.logger.info(f"Loading image from S3: {S3_BUCKET+image_s3key}")
             # s3 = boto3.client('s3')
             file_obj = s3.get_object(Bucket=S3_BUCKET, Key=image_s3key)
             return file_obj

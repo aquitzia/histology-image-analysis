@@ -29,7 +29,7 @@ def predict(): # image_url <class '_io.BytesIO'>
     image_filename = data['image_filename'] # data is <class 'dict'>
     if not image_filename:
         return jsonify({"Error": "image_filename is required"}), 400
-    logger.info(f"image_filename: {image_filename}")
+    # logger.info(f"image_filename: {image_filename}")
 
     inference_info = model.predict(image_filename)
     return jsonify(inference_info), 200
