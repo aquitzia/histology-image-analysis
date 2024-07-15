@@ -193,17 +193,8 @@ if st.button('Analyze with the MLP model'):
                     if r is not None:
                         f"Status code: {r.status_code}"
 if st.button('Read about the MLP model and AWS Lambda system design'):
-    '**Training Data**'
-    counts = st.session_state.train_df['label'].value_counts()
-    col1, col2, _ = st.columns([1, 1, 3])
-    with col1:
-        'Sample Counts'
-        st.bar_chart(counts, height=200)
-    with col2:
-        'Class Percentages'
-        total = counts.sum()
-        st.bar_chart(counts.apply(lambda x: x / total * 100), height=200)
-
+    '***AWS Lambda Architecture Diagram***'
+    st.image("diagram_mlp_lambda.png")
     with open("mlp_info.md", "r") as f:
         mlp_file = f.read()
     mlp_file
@@ -255,8 +246,10 @@ if st.button('Analyze with the ViT model'):
                     f"Total: {flask_runtime:.2f} seconds"
 
 if st.button('Read about the ViT model and AWS EC2 system design'):
-    # left_col, center_col, right_col = st.columns(3)
-    # with center_col:
+    _, center_col, _ = st.columns([4,6,1])
+    with center_col:
+        '##### **Docker Compose running the Flask App**'
+    st.image("diagram_vit_flask.png")
     with open("vit_info.md", "r") as f:
         vit_file = f.read()
     vit_file

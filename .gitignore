@@ -1,6 +1,7 @@
 # Platform-specific
 mhist-project.code-workspace
 run_streamlit_app.sh
+__pycache__
 
 # Large
 thumb/
