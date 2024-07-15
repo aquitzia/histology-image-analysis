@@ -7,3 +7,6 @@ onnx_artifacts
 mhist-venv
 # .github/
 .github/workflows/update-model.yml
+artifacts/samples_weights.npy
+artifacts/vit_model.tar.gz
+artifacts/vit_onnx_model.tar.gz

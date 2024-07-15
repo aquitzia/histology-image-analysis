@@ -12,7 +12,7 @@ import numpy as np
 TRAIN_MEAN = [0.738, 0.649, 0.775]
 TRAIN_STD =  [0.197, 0.244, 0.17]
 S3_BUCKET = "mhist-streamlit-app"
-S3_ORIGINALS_DIR = "images/test-set/original/"
+S3_ORIGINALS_DIR = "images/original/"
 
 # For inference
 from onnxruntime import InferenceSession
@@ -30,20 +30,20 @@ LOADED_MODEL = None
 # It only uses 3.3 GB CPU memory, and 1.4 GB space (for artifacts)
 def init_model():
     global LOADED_MODEL
-    try:
-        # print('EFS_ACCESS_POINT contents:', os.listdir(EFS_ACCESS_POINT)) # EFS Access Point has access to the contents of /mhist-lambda
-        onnx_path = os.path.join(EFS_ACCESS_POINT, MODEL_PATH)
-        print('Loading model from', os.path.abspath(onnx_path))
-        # session_options = onnxruntime.SessionOptions()
-        # session_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
-        start_loading = time.monotonic()
-        LOADED_MODEL = InferenceSession(os.path.abspath(onnx_path))#, providers=['CPUExecutionProvider'])
-        model_load_time = time.monotonic()
-        print(f'MLP model loaded in {model_load_time} seconds')
-    except ValueError as e:
-        logger.info(f"Value error: {e}") # incorrect input shapes or types
-    except Exception as e:
-        logger.info(f"An unexpected error occurred: {e}")
+    # try:
+    # print('EFS_ACCESS_POINT contents:', os.listdir(EFS_ACCESS_POINT)) # EFS Access Point has access to the contents of /mhist-lambda
+    onnx_path = os.path.join(EFS_ACCESS_POINT, MODEL_PATH)
+    print('Loading model from', os.path.abspath(onnx_path))
+    # session_options = onnxruntime.SessionOptions()
+    # session_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
+    start_loading = time.monotonic()
+    LOADED_MODEL = InferenceSession(os.path.abspath(onnx_path))#, providers=['CPUExecutionProvider'])
+    model_load_time = time.monotonic()
+    print(f'MLP model loaded in {model_load_time} seconds')
+    # except ValueError as e:
+    #     logger.info(f"Value error: {e}") # incorrect input shapes or types
+    # except Exception as e:
+    #     logger.info(f"An unexpected error occurred: {e}")
 
 
 ##### Model only needs to be loaded once (not for each prediction)

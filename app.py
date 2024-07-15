@@ -14,29 +14,24 @@ import json
 
 import streamlit as st # 1.35.0
 import pandas as pd # 2.2.2
-# from utilities import predict, init_model
 
 # Initialize state (once per app/user session)
 if 'first_run' not in st.session_state:
     st.session_state.first_run = False
 
     # API Gateway URL format- https://{restapi_id}.execute-api.{region}.amazonaws.com/{stage_name}/{resource_path}
-    # {restapi_id} for API Gateway REST API
-    # {region} AWS region
-    # {stage_name} deployment stage (e.g., prod, dev, etc.)
-    # {resource_path} the endpoint that triggers the Lambda function
-    st.session_state.S3_URL_ORIGINALS = "https://mhist-streamlit-app.s3.us-west-1.amazonaws.com/images/test-set/original/"
+    st.session_state.S3_URL_ORIGINALS = "https://mhist-streamlit-app.s3.us-west-1.amazonaws.com/images/original/"
     st.session_state.LAMBDA_FUNCTION = 'https://msztnjekn7.execute-api.us-west-1.amazonaws.com/'
     st.session_state.FLASK_ENDPOINT = 'http://54.219.114.203:5050/' #13.52.243.246
     st.session_state.THUMB_DIR="thumb"
-    
+
     # Metadata about the scans
     # 'name' : MHIST_<code>.png    # image codes are 3 letters long
     # 'label' = HP or SSA          # binary, categorical label
     # 'experts' = 0 through 7      # int
     st.session_state.test_df = pd.read_csv('testset_features.csv')
     st.session_state.train_df = pd.read_csv('trainset_features.csv')
-    
+
     # # ONNX Runtime Session loads the model, then can be re-used
     # st.session_state.ort_session = init_model() # This wouldn't work well here with Lambda (session would be limited to 15 min, so would move it to Lambda invocation and add logic)
 

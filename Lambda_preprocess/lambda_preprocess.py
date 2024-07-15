@@ -8,7 +8,6 @@ from io import BytesIO
 # To preprocess for inference
 from PIL import Image
 import numpy as np
-# import torch
 # from torchvision import transforms
 
 # Mean and std values are calculated from the training data, to normalize the colors (per channel):
@@ -18,7 +17,7 @@ TRAIN_STD =  [0.197, 0.244, 0.17]
 
 EFS_ACCESS_POINT = '/mnt/efs' # root directory is mounted here
 S3_BUCKET = "mhist-streamlit-app"
-S3_ORIGINALS_DIR = "images/test-set/original/"
+S3_ORIGINALS_DIR = "images/original/"
 S3_PREPROCESSED_DIR = "images/test-set/preprocessed/"
 
 PREPROCESS_PATH = '/preprocess'

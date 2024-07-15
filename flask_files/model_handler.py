@@ -5,7 +5,7 @@ import time
 import boto3 # 1.34.127
 import botocore # handles exceptions
 S3_BUCKET = "mhist-streamlit-app"
-S3_ORIGINALS_DIR = "images/test-set/original/"
+S3_ORIGINALS_DIR = "images/original/"
 from io import BytesIO
 from PIL import Image
 import numpy as np # 1.26.4
@@ -38,7 +38,7 @@ class ModelHandler:
 
     @staticmethod
     def __s3_get_object(image_filename):
-        try:
+        # try:
             # # Use session class for debugging
             # session = boto3.Session()
             # print("Region:", session.region_name)
@@ -46,19 +46,19 @@ class ModelHandler:
             # print("Credentials:", session.get_credentials())
             # s3 = session.client('s3')
 
-            image_s3key = os.path.join(S3_ORIGINALS_DIR, image_filename)
-            # print('Loading', S3_BUCKET, image_s3key)
-            s3 = boto3.client('s3')
-            file_obj = s3.get_object(Bucket=S3_BUCKET, Key=image_s3key)
-            return file_obj
-        except botocore.exceptions.ClientError as e:
-            logger.info(f"An AWS error occurred: {e}")
-        except botocore.exceptions.NoCredentialsError:
-            logger.info("Credentials not available")
-        except botocore.exceptions.PartialCredentialsError:
-            logger.info("Incomplete credentials provided")
-        except Exception as e:
-            logger.info(f"An error occurred: {e}")
+        image_s3key = os.path.join(S3_ORIGINALS_DIR, image_filename)
+        # print('Loading', S3_BUCKET, image_s3key)
+        s3 = boto3.client('s3')
+        file_obj = s3.get_object(Bucket=S3_BUCKET, Key=image_s3key)
+        return file_obj
+        # except botocore.exceptions.ClientError as e:
+        #     logger.info(f"An AWS error occurred: {e}")
+        # except botocore.exceptions.NoCredentialsError:
+        #     logger.info("Credentials not available")
+        # except botocore.exceptions.PartialCredentialsError:
+        #     logger.info("Incomplete credentials provided")
+        # except Exception as e:
+        #     logger.info(f"An error occurred: {e}")
 
 
     @staticmethod

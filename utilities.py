@@ -10,7 +10,6 @@ from onnxruntime import InferenceSession
 import urllib.request
 from io import BytesIO
 from PIL import Image
-import torch
 from torchvision import transforms
 import numpy as np # 1.26.4
 # Mean and std values are calculated from the training data, to normalize the colors (per channel):
@@ -19,9 +18,9 @@ TRAIN_STD =  [0.197, 0.244, 0.17]
 
 import boto3 # 1.34.127
 import botocore # handles exceptions
-# S3_URL_ORIGINALS = "https://mhist-streamlit-app.s3.us-west-1.amazonaws.com/images/test-set/original/"
+# S3_URL_ORIGINALS = "https://mhist-streamlit-app.s3.us-west-1.amazonaws.com/images/original/"
 S3_BUCKET = "mhist-streamlit-app"
-S3_ORIGINALS_DIR = "images/test-set/original/"
+S3_ORIGINALS_DIR = "images/original/"
 S3_THUMBS_DIR = "images/test-set/thumb/" # To download 977 thumbnails from S3
 LOCAL_THUMBS_DIR = "thumb/"
 EFS_ACCESS_POINT = '/mnt/efs/mhist-lambda' # root directory is mounted here
