@@ -22,7 +22,7 @@ if 'first_run' not in st.session_state:
     # API Gateway URL format- https://{restapi_id}.execute-api.{region}.amazonaws.com/{stage_name}/{resource_path}
     st.session_state.S3_URL_ORIGINALS = "https://mhist-streamlit-app.s3.us-west-1.amazonaws.com/images/original/"
     st.session_state.LAMBDA_FUNCTION = 'https://msztnjekn7.execute-api.us-west-1.amazonaws.com/'
-    st.session_state.FLASK_ENDPOINT = 'http://54.219.114.203:5050/' #13.52.243.246
+    st.session_state.FLASK_ENDPOINT = 'http://3.101.138.51:5050/' #13.52.243.246
     st.session_state.THUMB_DIR="thumb"
 
     # Metadata about the scans
