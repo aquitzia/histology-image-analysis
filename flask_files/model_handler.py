@@ -28,37 +28,33 @@ class ModelHandler:
             # session_options = onnxruntime.SessionOptions()
             # session_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
             self.ort_session = InferenceSession(model_path, providers=['CPUExecutionProvider'])
-            # ort_session = InferenceSession(os.path.abspath(onnx_path))#, providers=['CPUExecutionProvider'])
             self.load_time = time.monotonic() - start_onnx_session
-            logger.info(f'Loaded model in {self.load_time} seconds') # 1.1504546720000235
+            self.logger.info(f'Loaded model in {self.load_time} seconds') # 1.1504546720000235
         except ValueError as e:
-            logger.info(f"Value error: {e}") # incorrect input shapes or types
+            self.logger.info(f"Value error: {e}") # incorrect input shapes or types
         except Exception as e:
-            logger.info(f"An unexpected error occurred: {e}")
+            self.logger.info(f"An unexpected error occurred: {e}")
 
-    @staticmethod
-    def __s3_get_object(image_filename):
-        # try:
-            # # Use session class for debugging
-            # session = boto3.Session()
-            # print("Region:", session.region_name)
-            # print("Profile:", session.profile_name)
-            # print("Credentials:", session.get_credentials())
-            # s3 = session.client('s3')
+    def __s3_get_object(self, image_filename):
+        try:
+            # Use session object for debugging
+            session = boto3.Session()
+            # self.logger.info(f"Profile: {session.profile_name}")
+            s3 = session.client('s3')
 
-        image_s3key = os.path.join(S3_ORIGINALS_DIR, image_filename)
-        # print('Loading', S3_BUCKET, image_s3key)
-        s3 = boto3.client('s3')
-        file_obj = s3.get_object(Bucket=S3_BUCKET, Key=image_s3key)
-        return file_obj
-        # except botocore.exceptions.ClientError as e:
-        #     logger.info(f"An AWS error occurred: {e}")
-        # except botocore.exceptions.NoCredentialsError:
-        #     logger.info("Credentials not available")
-        # except botocore.exceptions.PartialCredentialsError:
-        #     logger.info("Incomplete credentials provided")
-        # except Exception as e:
-        #     logger.info(f"An error occurred: {e}")
+            image_s3key = os.path.join(S3_ORIGINALS_DIR, image_filename)
+            self.logger.info(f"Loading image from S3: {S3_BUCKET+image_s3key}")
+            # s3 = boto3.client('s3')
+            file_obj = s3.get_object(Bucket=S3_BUCKET, Key=image_s3key)
+            return file_obj
+        except botocore.exceptions.ClientError as e:
+            self.logger.info(f"An AWS error occurred: {e}")
+        except botocore.exceptions.NoCredentialsError:
+            self.logger.info("Credentials not available")
+        except botocore.exceptions.PartialCredentialsError:
+            self.logger.info("Incomplete credentials provided")
+        except Exception as e:
+            self.logger.info(f"An error occurred: {e}")
 
 
     @staticmethod
@@ -76,10 +72,10 @@ class ModelHandler:
 
     # Model expects the input to be ndarray (150528,), dtype torch.float32
     # Images are normalized to range [0., 1.] and standardized by channel
-    @staticmethod
-    def __preprocess(image_filename):
+    def __preprocess(self, image_filename):
         # Download image (png file) as bytes from S3
-        file_obj = ModelHandler.__s3_get_object(image_filename)
+        # self.logger.info(f"Preprocessing image_filename: {image_filename}")
+        file_obj = self.__s3_get_object(image_filename)
         image_bytes = BytesIO(file_obj['Body'].read())
 
         # Convert bytes (buffer) to 3-channels, then to ndarray
@@ -103,6 +99,7 @@ class ModelHandler:
 
 
     def predict(self, image_filename):
+        # self.logger.info(f"Starting prediction with image_filename: {image_filename}")
         start_preprocess = time.monotonic()
         preprocessed_image = self.__preprocess(image_filename)
         preprocess_time = time.monotonic() - start_preprocess
