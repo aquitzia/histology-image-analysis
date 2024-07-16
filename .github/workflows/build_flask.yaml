@@ -30,6 +30,8 @@ jobs:
           USER: ubuntu
         run: |
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
+          ls -l private_key  # Debug: Check file permissions
+          ssh-keygen -y -f private_key  # Debug: Verify key is valid
           scp -o StrictHostKeyChecking=no -i private_key -r ./* ${USER}@${HOST}:/home/ubuntu/histology-image-analysis/flask_files/
           ssh -o StrictHostKeyChecking=no -i private_key ${USER}@${HOST} '
             cd /home/ubuntu/histology-image-analysis/flask_files/
