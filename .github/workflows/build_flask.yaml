@@ -3,27 +3,27 @@ name: Deploy to EC2
 on:
   push:
     branches: [main]
-
+    
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      
-      - name: Configure AWS credentials
+
+      - name: Configure AWS credentials to temporarily change security group with AWS API
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-west-1
 
-      - name: Add GitHub Actions IP to Security Group
+      - name: Add GitHub Actions' IP to Security Group
         run: |
           SECURITY_GROUP_ID="sg-01fefb330f6147653"
           IP=$(curl -s https://api.ipify.org)
           aws ec2 authorize-security-group-ingress --group-id $SECURITY_GROUP_ID --protocol tcp --port 22 --cidr $IP/32
 
-      - name: Deploy to EC2
+      - name: Deploy to EC2 through SSH
         env:
           PRIVATE_KEY: ${{ secrets.AWS_PRIVATE_RSA_KEY }}
           HOST: ${{ secrets.EC2_SERVER }}
@@ -35,11 +35,12 @@ jobs:
           scp -o StrictHostKeyChecking=no -i private_key -r ./* ${USER}@${HOST}:/home/ubuntu/histology-image-analysis/flask_files/
           ssh -o StrictHostKeyChecking=no -i private_key ${USER}@${HOST} '
             cd /home/ubuntu/histology-image-analysis/flask_files/
-            docker-compose build
-            docker-compose up -d
+            docker compose build
+            docker compose up -d
           '
 
-      - name: Remove GitHub Actions IP from Security Group
+      - name: Remove GitHub Actions' IP from Security Group
+        # if: always() runs the commands even if the deployment fails
         if: always()
         run: |
           SECURITY_GROUP_ID="sg-01fefb330f6147653"
