@@ -21,13 +21,14 @@ jobs:
       
       - name: Deploy to EC2
         env:
-          PRIVATE_KEY: ${{ secrets.AWS_PRIVATE_RSA_KEY }} # private SSH key
+          PRIVATE_KEY: ${{ secrets.AWS_PRIVATE_RSA_KEY }}
           HOST: ${{ secrets.EC2_SERVER }}
+          USER: ubuntu
         run: |
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
-          scp -o StrictHostKeyChecking=no -i private_key docker-compose.yml ec2-user@${HOST}:/home/ubuntu/histology-image-analysis/flask_files/docker-compose.yml
-          ssh -o StrictHostKeyChecking=no -i private_key ec2-user@${HOST} '
+          scp -o StrictHostKeyChecking=no -i private_key -r ./* ${USER}@${HOST}:/home/ubuntu/histology-image-analysis/flask_files/
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER}@${HOST} '
             cd /home/ubuntu/histology-image-analysis/flask_files
-            docker-compose pull
+            docker-compose build
             docker-compose up -d
           '
