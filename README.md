@@ -4,6 +4,14 @@ LinkedIn: https://www.linkedin.com/in/aqgarcia/
 
 GitHub: https://github.com/aquitzia
 
+**Files included:**
+`Google_Colab_training` Google Colab notebook for data exploration, training, hyperparameter tuning with MLflow for tracking metrics, logging best models, and model evaluation and analysis
+`sagemaker-inference` and `artifacts` for running inference in SageMaker
+`flask_files` contain file for the Flask app, Docker image, and Docker Compose
+`Lambda_predict` contains files for the AWS Lambda Function
+`.github/workflows` contains two files for GitHub Actions to deploy Docker Containers. One is for the Lambda Function the other is for the Docker container running on EC2.
+Most of the other files and folders in this directory are for the Streamlit frontend files: `mhist-app, thumb, diagrams, mhist-venv, markdown files, and CSV files`
+
 ## **Dataset**
 The images in the dataset are fixed-size, due to the limitations of the model and the standard in computer vision. The color in the images is mostly shades of purple (against a white background), so I opted to normalize the colors and used torchvision transforms to effectively apply normalization, standardization, as well as other steps required for input into the model. In a couple of my experiments, I added synthetic data with 90-degree rotations and flipping, but there was limited payoff, compared to more traditional methods of fine-tuning, such as adjusting the learning rate or using a different scheduler.
 

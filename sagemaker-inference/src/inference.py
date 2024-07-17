@@ -52,8 +52,7 @@ def preprocess(image_bytes):
     return np.expand_dims(standardized_np, axis=0)
 
 
-# Handle predict request
-# TODO: check that the input_data from AWS predictor is a dictionary with 'bucket' and 'key' for the S3 image
+##### Predict #####
 def input_fn(request_body, request_content_type):
     if request_content_type == 'application/json':
         input_data = json.loads(request_body)
@@ -85,7 +84,6 @@ def sigmoid(np_outs):
 
 def output_fn(predictions, content_type):
     if content_type == 'application/json':
-        # class_probs = prediction[0].tolist()
         logit = predictions[0].item() # <class 'numpy.ndarray'> shape (1,) dtype=float32
         positive_prob = sigmoid(logit).item()
         pred = positive_prob > 0.3
@@ -99,6 +97,4 @@ def output_fn(predictions, content_type):
             # 'inference_time': inference_time-preprocess_time,
             }
         return json.dumps(inference_info)
-    raise ValueError(f"Unsupported accept type: {accept}")
-
-
+    raise ValueError(f"Unsupported content type: {content_type}")
