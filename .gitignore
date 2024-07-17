@@ -8,11 +8,10 @@ thumb/
 onnx_artifacts
 mhist-venv
 artifacts/samples_weights.npy
-artifacts/vit_model.tar.gz
-artifacts/vit_onnx_model.tar.gz
 
 # Old (test before deleting)
 get_ecr_size.py
 .github/workflows/update-model.yml
 Lambda_predict/lambda_function_local.py
 # Lambda_predict/lambda_handler_old.py
+sagemaker-inference/model.tar.gz

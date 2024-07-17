@@ -16,11 +16,10 @@ TRAIN_STD =  [0.197, 0.244, 0.17]
 # For loading model
 import onnxruntime # 1.18.0
 from onnxruntime import InferenceSession
-MODEL_FILENAME = 'vit_onnx_model.onnx'
 
 # Load model
 def model_fn(model_dir):
-    model_path = os.path.join(model_dir, MODEL_FILENAME)
+    model_path = os.path.join(model_dir, 'MHIST_ViT_v13_dynamo_model.onnx')
     session = InferenceSession(model_path)
     return session
 
