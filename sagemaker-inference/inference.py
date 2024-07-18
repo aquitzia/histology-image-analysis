@@ -53,6 +53,7 @@ def preprocess(image_bytes):
 
 ##### Predict #####
 def input_fn(request_body, request_content_type):
+    print(f"request_content_type {request_content_type}")
     if request_content_type == 'application/json':
         input_data = json.loads(request_body)
         bucket = input_data['bucket']
