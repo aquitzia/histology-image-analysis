@@ -156,7 +156,7 @@ if st.button('Analyze with the MLP model'):
                 # 'Sending a JSON request to the Lambda Function',
                 # 'Running real-time inference',
                 # 'Doing some dishes while I wait...',
-                'AWS Lambda takes about 20 seconds to respond on a "cold start."',
+                'AWS Lambda takes about 25 seconds to respond on a "cold start."',
                 # 'Does anyone know any good jokes?',
                 # 'A.I. hasn\'t learned how to tell (funny) jokes yet... <crickets>',
                 ]
