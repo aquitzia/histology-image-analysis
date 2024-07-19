@@ -23,16 +23,15 @@ jobs:
           IP=$(curl -s https://api.ipify.org)
           aws ec2 authorize-security-group-ingress --group-id $SECURITY_GROUP_ID --protocol tcp --port 22 --cidr $IP/32
 
-      - name: Deploy to EC2 through SSH
+      - name: SSH into EC2, build flask_files
         env:
           PRIVATE_KEY: ${{ secrets.AWS_PRIVATE_RSA_KEY }}
           HOST: ${{ secrets.EC2_SERVER }}
           USER: ubuntu
         run: |
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
-          ls -l private_key  # Debug: Check file permissions
-          ssh-keygen -y -f private_key  # Debug: Verify key is valid
-          scp -o StrictHostKeyChecking=no -i private_key -r ./* ${USER}@${HOST}:/home/ubuntu/histology-image-analysis/flask_files/
+          #ls -l private_key  # Debug: Check file permissions
+          # scp -o StrictHostKeyChecking=no -i private_key -r ./* ${USER}@${HOST}:/home/ubuntu/histology-image-analysis/flask_files/
           ssh -o StrictHostKeyChecking=no -i private_key ${USER}@${HOST} '
             cd /home/ubuntu/histology-image-analysis/flask_files/
             docker compose build
@@ -40,8 +39,7 @@ jobs:
           '
 
       - name: Remove GitHub Actions' IP from Security Group
-        # if: always() runs the commands even if the deployment fails
-        if: always()
+        if: always() # run the command even if the deployment fails
         run: |
           SECURITY_GROUP_ID="sg-01fefb330f6147653"
           IP=$(curl -s https://api.ipify.org)
