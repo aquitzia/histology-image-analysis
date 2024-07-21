@@ -1,6 +1,6 @@
 import os
 import json
-from inference import model_fn, input_fn, predict_fn, output_fn
+from src.inference import model_fn, input_fn, predict_fn, output_fn
 
 TEST_INPUT = {
     'bucket': 'mhist-streamlit-app',

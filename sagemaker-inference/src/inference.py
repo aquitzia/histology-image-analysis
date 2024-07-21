@@ -16,10 +16,24 @@ TRAIN_STD =  [0.197, 0.244, 0.17]
 # For loading model
 import onnxruntime # 1.18.0
 from onnxruntime import InferenceSession
+MODEL_PATH = 'MHIST_ViT_v13_dynamo_model.onnx'
 
-# Load model
+'''
+Model loading is the process of deserializing your saved model back into a PyTorch model.
+Serving is the process of translating InvokeEndpoint requests to inference calls on the loaded model.
+
+Model loading:
+model_fn: SageMaker PyTorch model server loads your model by invoking model_fn.
+
+Model serving:
+input_fn: Takes request data and deserializes the data into an object for prediction.
+predict_fn: Takes the deserialized request object and performs inference against the loaded model.
+output_fn: Takes the result of prediction and serializes this according to the response content type.
+'''
+
+# Load the model from a file (ex: model.pth) from model_dir
 def model_fn(model_dir):
-    model_path = os.path.join(model_dir, 'MHIST_ViT_v13_dynamo_model.onnx')
+    model_path = os.path.join(model_dir, MODEL_PATH)
     session = InferenceSession(model_path)
     return session
 
@@ -52,10 +66,14 @@ def preprocess(image_bytes):
 
 
 ##### Predict #####
-def input_fn(request_body, request_content_type):
-    print(f"request_content_type {request_content_type}")
-    if request_content_type == 'application/json':
-        input_data = json.loads(request_body)
+# Where request_body is a byte buffer and request_content_type is a Python string.
+#
+# The request Content-Type, for example “application/x-npy”
+# The request data body, a byte array
+def input_fn(serialized, content_type):
+    print(f"content_type {content_type}")
+    if content_type == 'application/json':
+        input_data = json.loads(serialized)
         bucket = input_data['bucket']
         key = input_data['key']
         
@@ -65,8 +83,7 @@ def input_fn(request_body, request_content_type):
         return preprocess(BytesIO(image_file))        
 
     else:
-        raise ValueError(f"Unsupported content type: {request_content_type}")
-
+        raise ValueError(f"Unsupported content type: {content_type}")
         
 # Predict with ONNX model
 def predict_fn(input_data, model):
@@ -83,18 +100,19 @@ def sigmoid(np_outs):
 
 
 def output_fn(predictions, content_type):
-    if content_type == 'application/json':
-        logit = predictions[0].item() # <class 'numpy.ndarray'> shape (1,) dtype=float32
-        positive_prob = sigmoid(logit).item()
-        pred = positive_prob > 0.3
-        # self.logger.info(f'ONNX model ran inference on image_filename{image_filename} logit {logit}')
-        inference_info = {
-            'logit': logit, # check image_filename MHIST_aah.png logit=2.16929292678833
-            'predicted_class': 'SSA' if pred else 'HP',
-            'probability': positive_prob if pred else 1-positive_prob,
-            # 'model_load_time': self.load_time, # 1.1504546720000235
-            # 'preprocess_time': preprocess_time,
-            # 'inference_time': inference_time-preprocess_time,
-            }
-        return json.dumps(inference_info)
-    raise ValueError(f"Unsupported content type: {content_type}")
+    # if content_type == 'application/json':
+    # predictions = json.dumps(prediction_output.tolist())
+    logit = predictions[0].item() # <class 'numpy.ndarray'> shape (1,) dtype=float32
+    positive_prob = sigmoid(logit).item()
+    pred = positive_prob > 0.3
+    # self.logger.info(f'ONNX model ran inference on image_filename{image_filename} logit {logit}')
+    inference_info = {
+        'logit': logit, # check image_filename MHIST_aah.png logit=2.16929292678833
+        'predicted_class': 'SSA' if pred else 'HP',
+        'probability': positive_prob if pred else 1-positive_prob,
+        # 'model_load_time': self.load_time, # 1.1504546720000235
+        # 'preprocess_time': preprocess_time,
+        # 'inference_time': inference_time-preprocess_time,
+        }
+    return json.dumps(inference_info), content_type
+    # raise ValueError(f"Unsupported content type: {content_type}")
