@@ -1,15 +1,17 @@
 # Platform-specific
 mhist-project.code-workspace
 run_streamlit_app.sh
-__pycache__
+*__pycache__*
+*.DS_Store
 
 # Large
-thumb/
+thumb
 onnx_artifacts
 mhist-venv
-artifacts/samples_weights.npy
-sagemaker-inference/model.tar.gz
-sagemaker-inference/MHIST_ViT_v13_dynamo_model.onnx
+# sagemaker-inference/model.tar.gz
+# sagemaker-inference/MHIST_ViT_v13_dynamo_model.onnx
+google-colab-training/artifacts/MHIST_ViT_v13.pt
+google-colab-training/artifacts/MHIST_ViT_v13_dynamo_model.onnx
 
 # Old (test before cleaning up these lines)
 get_ecr_size.py
