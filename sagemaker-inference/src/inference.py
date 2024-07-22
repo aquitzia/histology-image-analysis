@@ -71,7 +71,6 @@ def preprocess(image_bytes):
 # The request Content-Type, for example “application/x-npy”
 # The request data body, a byte array
 def input_fn(serialized, content_type):
-    print(f"content_type {content_type}")
     if content_type == 'application/json':
         input_data = json.loads(serialized)
         bucket = input_data['bucket']
